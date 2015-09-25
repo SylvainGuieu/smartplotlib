@@ -5,6 +5,7 @@ from .base import Plot
 from . import plotfuncs as pfs
 from .plotfuncs import _BaseFigAxes
 from .figaxes import axes, figure
+import numpy as np
 
 """
 Define the main plot classes and their plotfuncs

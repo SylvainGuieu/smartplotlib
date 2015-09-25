@@ -68,7 +68,7 @@ def xyplot():
 
     model.go("legend", "show", "draw")
 
-    return model, data
+    return model
 
 
 def polyfit():

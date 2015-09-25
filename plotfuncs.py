@@ -5,6 +5,7 @@ from .recursive import popargs, KWS, extract_args, alias
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os # for savefig
 
 __all__ = ["get_axes", "get_figure", "aset", "fset", "show", "fclear",
            "draw", "aclear", "grid", "plot", "lines", "errorbar", "scatter",
@@ -58,7 +59,8 @@ def _make_func(name,derived="plotfunc", cls=plt.Axes,
     print(derive)
     decorate = "@{name}.caller\n".format(name=name)
     decorate += "def {name}(*args,**kwargs):\n".format(name=name)
-    decorate += "    return get_axes_kw(kwargs).{name}(*args, **kwargs)".format(name=name)
+    decorate += "    return get_axes_kw(kwargs).{name}(*args, **kwargs)\n".format(name=name)
+    decorate += "setpfdoc({name}, plt.Axes.{name}.__doc__, '{name}')\n".format(name=name)
     print (decorate)
     return derive+"\n"+decorate+"\n"
 
@@ -270,7 +272,7 @@ def get_figure(fig, axes=None):
     if isinstance(fig, (tuple,list)):
         tpl = fig
         if len(tpl)!=2:
-            TypeError("Expecting a 2 tuple for figure got '%s'"%tpl)
+            TypeError("Expecting a 2 tuple for figure got '%s'"%(tpl,))
 
         if isinstance(tpl[0], basestring):
             name, fig = tpl
@@ -279,7 +281,7 @@ def get_figure(fig, axes=None):
             fig = get_figure(None, axes)
 
         if len(tpl)!=2:
-            TypeError("Expecting a 2 tuple for figure got '%s'"%tpl)
+            TypeError("Expecting a 2 tuple for figure got '%s'"%(tpl,))
 
         nrows, ncols = tpl
         gs = GridSpec(nrows, ncols)
@@ -296,7 +298,7 @@ def get_axes_kw(kwargs):
                     )
 
 def get_figure_kw(kwargs):
-    return get_figure(kwargs.get("axes", None), kwargs.pop("figure",None))
+    return get_figure(kwargs.pop("figure", None), kwargs.get("axes",None))
 
 
 
@@ -387,13 +389,17 @@ fset = plotfunc.duplicate('figure', 'axes',
         'snap', 'agg_filter', 'figheight', 'alpha', 'tight_layout', 'rasterized',
         'path_effects', 'sketch_params', 'frameon', 'zorder', 'animated', 'dpi',
         "sp_left", "sp_bottom", "sp_right", "sp_top", "sp_wspace", "sp_hspace",
-        "wspace", "hspace"
+        "wspace", "hspace", "suptitle"
         )
 
 @fset.caller
 def fset(figure=None, axes=None, sp_left=None, sp_bottom=None, sp_right=None, sp_top=None,
-         sp_wspace=None, sp_hspace=None, wspace=None, hspace=None, **kwargs):
+         sp_wspace=None, sp_hspace=None, wspace=None, hspace=None, suptitle=None, **kwargs):
     fig = get_figure(figure, axes)
+
+    if suptitle:
+        fig.suptitle(suptitle)
+
     if len(kwargs):
         fig.set(**kwargs)
     fig.subplots_adjust(left=sp_left, bottom=sp_bottom, right=sp_right, top=sp_top,
@@ -462,7 +468,7 @@ def grid(*args, **kwargs):
 setpfdoc(grid, plt.Axes.grid.__doc__, "grid")
 
 
-colorbar = plotfunc.derive(
+colorbar = plotfunc.derive(0,
                            "mappable","cax", "ax", "use_gridspec",
                            "orientation","fraction", "pad", "shrink", "aspect",
                            "anchor", "panchor","extend","extendfrac",
@@ -485,7 +491,31 @@ def colorbar(*args, **kwargs):
                            'an image (with imshow) or a contour set ('
                            'with contourf).')
     args = (mappable,)+args
+    ax = kwargs.pop("ax", None)
+    if ax is not None:
+        kwargs["ax"] = get_axes(ax, kwargs.get("figure",None))
+
     return get_figure_kw(kwargs).colorbar(*args, **kwargs)
+
+
+savefig = plotfunc.derive(1,
+           "fname", "dpi", "facecolor", "edgecolor",
+           "orientation", "papertype", "format",
+           "transparent", "bbox_inches", "pad_inches",
+           "frameon", "version"
+          )
+@savefig.caller
+def savefig(fname, *args, **kwargs):
+    version = kwargs.pop("version", None)
+
+    if not isinstance(fname, basestring):
+        raise ValueError("fname must be a string got a '%s'"%type(fname))
+    if version is not None:
+        name, ext = os.path.splitext(fname)
+        fname=name+version+ext
+
+    return get_figure_kw(kwargs).savefig(fname, *args, **kwargs)
+
 
 ###############################################################
 #
@@ -898,6 +928,9 @@ texts = plotfunc.duplicate(
 def text(x, y, s, **kwargs):
     return get_axes_kw(kwargs).text(x, y, s, **kwargs)
 setpfdoc(text, plt.Axes.text.__doc__, "text")
+
+
+
 
 
 legend = plotfunc.derive(0, "loc", "bbox_to_anchor", "ncol", "prop", "fontsize",

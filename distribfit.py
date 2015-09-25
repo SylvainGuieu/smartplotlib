@@ -20,13 +20,13 @@ distrib_lookup = {
 @dataxyplot.decorate()
 def distribfit(plot, *args, **kwargs):
     plot.update(kwargs.get(KWS, {}), **kwargs)
-    (data, distrib, npoints,
+    (data, distrib, npoints, _range,
      _min, _max, amplitude) = plot.parseargs(args, "data", "distrib",
-                                         "npoints",
+                                         "npoints", "range",
                                          "min", "max", "amplitude",
                                          npoints = 100, min=None,
                                          max=None, amplitude=1.0,
-                                         distrib="norm"
+                                         distrib="norm", range=(None, None)
                                         )
 
 
@@ -42,7 +42,14 @@ def distribfit(plot, *args, **kwargs):
     elif (not hasattr(distrib,"pdf")) or (not hasattr(distrib,"fit")):
         raise ValueError("distrib function must have .pdf and .fit methods")
 
-    loc, scale = distrib.fit(data, **plot.gets("loc","scale", "floc", "fscale",
+    fdata = data
+    mini, maxi = _range
+    if mini is not None:
+        fdata = data[data>=mini]
+    if maxi is not None:
+        fdata = fdata[fdata<=maxi]
+
+    loc, scale = distrib.fit(fdata, **plot.gets("loc","scale", "floc", "fscale",
                                               "optimizer"
                                             )
                            )

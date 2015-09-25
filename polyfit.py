@@ -131,7 +131,11 @@ class PolyFit(XYPlot):
         label = plot.get("label", None)
 
         if label is True:
-            plot["label"] = plot.get_label(coeff)
+            label_formater = plot.get("label_formater", None)
+            if label_formater:
+                plot["label"] = label_formater(plot,coeff)
+            else:
+                plot["label"] = plot.get_label(coeff)
 
         plot["coeff"] = coeff
         plot["xmin"] = xmin

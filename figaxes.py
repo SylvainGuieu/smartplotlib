@@ -38,22 +38,6 @@ class BasePlot(Plot):
     def clearparams(self):
         return self.locals.clear()
 
-    def iteraxes(self, _ncol_, _nrow_=None, _n_=None, **kwargs):
-        if _nrow_ is None:
-            n = _ncol_
-            axes = [(_ncol_,i) for i in range(1,n+1)]
-        else:
-            n = _nrow_*_ncol_ if _n_ is None else _n_
-            axes = [(_ncol_, _nrow_, i) for i in range(1,n+1)]
-
-        kwargs.setdefault("axes", axes)
-        return self.iter(n, **kwargs)
-
-    def iterfigure(self, *args, **kwargs):
-        figs = list(range(*args))
-        kwargs.setdefault("figure", figs)
-        return self.iter(len(figs), **kwargs)
-
 
 class AllPlot(BasePlot):
     pass
@@ -288,17 +272,17 @@ pfs.plot_axes_classes += (Axes,)
 class Figure(AllPlot):
     set = pfs.fset
     clear = pfs.fclear
+    @staticmethod
+    def finit(plot, *args, **kwargs):
+        if len(args)>0:
+            kwargs["figure"] = args[0]
+        if len(args)>1:
+            kwargs["axes"] = args[1]
+        elif len(args)>2:
+            raise ValueError("figure take no more than 2 positional arguments")
+        plot.update(dict(kwargs.pop(KWS,{}), **kwargs))
 
-@Figure
-def figure(plot, *args, **kwargs):
-    if len(args)>0:
-        kwargs["figure"] = args[0]
-    if len(args)>1:
-        kwargs["axes"] = args[1]
-    elif args:
-        raise ValueError("axes take no more than 2 positional arguments")
-    plot.update(dict(kwargs.pop(KWS,{}), **kwargs))
-
+figure = Figure()
 
 
 

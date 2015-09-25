@@ -39,6 +39,25 @@ class Plot(RecObject):
             raise TypeError("can add a plot only to a plot, plotfunc or stack (not '%s') "%(type(right)))
         return stack([self, right])
 
+    def iteraxes(self, _ncol_, _nrow_=None, _n_=None, **kwargs):
+        if _nrow_ is None:
+            n = _ncol_
+            axes = [(_ncol_,i) for i in range(1,n+1)]
+        else:
+            n = _nrow_*_ncol_ if _n_ is None else _n_
+            axes = [(_ncol_, _nrow_, i) for i in range(1,n+1)]
+
+        kwargs.setdefault("axes", axes)
+        return self.iter(n, **kwargs)
+
+    def iterfigure(self, *args, **kwargs):
+        figs = list(range(*args))
+        kwargs.setdefault("figure", figs)
+        return self.iter(len(figs), **kwargs)
+
+
+
+
 class PlotFunc(RecFunc):
     @property
     def example(self):
@@ -50,6 +69,23 @@ class PlotFunc(RecFunc):
         if not isinstance( right, (Plot,PlotFunc,stack)):
             raise TypeError("can add a plotfunc only to a plot, plotfunc or stack (not '%s') "%(type(right)))
         return stack([self, right])
+
+    def iteraxes(self, _ncol_, _nrow_=None, _n_=None, **kwargs):
+        if _nrow_ is None:
+            n = _ncol_
+            axes = [(_ncol_,i) for i in range(1,n+1)]
+        else:
+            n = _nrow_*_ncol_ if _n_ is None else _n_
+            axes = [(_ncol_, _nrow_, i) for i in range(1,n+1)]
+
+        kwargs.setdefault("axes", axes)
+        return self.iter(n, **kwargs)
+
+    def iterfigure(self, *args, **kwargs):
+        figs = list(range(*args))
+        kwargs.setdefault("figure", figs)
+        return self.iter(len(figs), **kwargs)
+
 
 
 def get_example(name, module=None):
