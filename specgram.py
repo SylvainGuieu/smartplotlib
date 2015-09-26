@@ -13,7 +13,7 @@ import numpy as np
 
 @imgplot.decorate(_example_=("specgram",None))
 def specgram(plot, *args, **kwargs):
-    """Plot Wrapper of matplotlib.spectrogram: Compute and plot a spectrogram of data in *x*
+    """PlotFactory Wrapper of matplotlib.spectrogram: Compute and plot a spectrogram of data in *x*
 
     contrarly to matplolib.spectrogram, spectrogram return a new imgplot-like instance
     ready to plot result of the spectrogram.
@@ -114,7 +114,7 @@ _spectrum = dataxyplot.derive()
 
 @_spectrum.decorate(_example_=("spectrum",None))
 def magnitude_spectrum(plot,*args, **kwargs):
-    """Plot Wrapper of matplotlib.magniture_spectrum : Compute the magnitude spectrum of *x*.
+    """PlotFactory Wrapper of matplotlib.magniture_spectrum : Compute the magnitude spectrum of *x*.
 
     contrarly to matplolib.spectrogram, return a new xyplot instance
     ready to plot result of the spectrum.
@@ -191,7 +191,7 @@ magnitude_spectrum.__doc__ = magnitude_spectrum.finit.__doc__
 
 @_spectrum.decorate(_example_=("spectrum",None))
 def angle_spectrum(plot,*args, **kwargs):
-    """Plot Wrapper of matplotlib.angle_spectrum : Compute the angle spectrum (wrapped phase spectrum) of *x*
+    """PlotFactory Wrapper of matplotlib.angle_spectrum : Compute the angle spectrum (wrapped phase spectrum) of *x*
 
     contrarly to matplolib.phase_sectrum, return a new xyplot instance
     ready to plot result of the spectrum.
@@ -254,7 +254,7 @@ angle_spectrum.__doc__ = angle_spectrum.finit.__doc__
 
 @_spectrum.decorate(_example_=("spectrum",None))
 def phase_spectrum(plot, *args,  **kwargs):
-    """Plot Wrapper of matplotlib.phase_spectrum : Compute the phase spectrum (unwrapped angle spectrum) of *data*
+    """PlotFactory Wrapper of matplotlib.phase_spectrum : Compute the phase spectrum (unwrapped angle spectrum) of *data*
 
     contrarly to matplolib.phase_sectrum, return a new xyplot instance
     ready to plot result of the spectrum.
@@ -315,11 +315,10 @@ phase_spectrum.__doc__ = phase_spectrum.finit.__doc__
 
 @_spectrum.decorate(_example_=("psd", None))
 def psd(plot, *args, **kwargs):
-    """Plot Wrapper of matplotlib.psd : Compute the psd(unwrapped angle spectrum) of *data*
+    """PlotFactory Wrapper of matplotlib.psd : Compute the psd(power spectral density) of *data*
 
-    contrarly to matplolib.psd, return a new xyplot instance
+    contrarly to matplolib.psd, return a new xyplot factory instance
     ready to plot result of the psd.
-
 
 
     Different Parameters than matplotlib:
@@ -381,7 +380,7 @@ def psd(plot, *args, **kwargs):
     plot.locals.setdefault(dd+"label", 'Power Spectral Density (%s)' % psd_units)
 
 
-    plot.axes(grid=True)
+    plot.aset.update(grid=True)
     plot.goifgo()
 
 psd.finit.__doc__ = psd.finit.__doc__ + plt.Axes.psd.__doc__
@@ -390,10 +389,10 @@ psd.__doc__ = psd.finit.__doc__
 
 @_spectrum.decorate(_example_=("csd", None))
 def csd(plot, *args, **kwargs):
-    """Plot Wrapper of matplotlib.psd : Compute the psd(unwrapped angle spectrum) of *data*
+    """PlotFactory Wrapper of matplotlib.csd : Compute the csd(cross-spectral) of *data1* vs *data2*
 
-    contrarly to matplolib.psd, return a new xyplot instance
-    ready to plot result of the psd.
+    contrarly to matplolib.psd, return a new xyplot factory instance
+    ready to plot result of the csd.
 
 
 
@@ -402,14 +401,14 @@ def csd(plot, *args, **kwargs):
         data2 : second data set They can be liases to "x" and "y" for instance
         direction ("y"/"x") : in wich axis the spectrum is ploted, default is "y"
 
-    Altered Parameters (if direction=="y"):
+    Machined Parameters (if direction=="y"):
         x  : alias('freqs')
         y  : 10*log10(psd)
         freqs : frequences
-        psd  : psd result in linear space
+        csd  : psd result in linear space
         data : the input data
         xlabel, ylabel :  are set if not already set
-        ymin, ymax : set to 0, alias('spec')  (for vlines plot)
+        ymin, ymax : set to 0, alias('spec') (for vlines plot)
         min, max, lines : set to 0, alias('spec'), alias('freq')
 
       if direction == "x" swap above x's and y's
@@ -452,7 +451,7 @@ def csd(plot, *args, **kwargs):
     plot.locals.setdefault(di+"label", 'Frequency')
     plot.locals.setdefault(dd+"label", 'Cross Spectrum Magnitude (dB)')
 
-    plot.axes(grid=True)
+    plot.aset.update(grid=True)
     plot.goifgo()
 
 csd.finit.__doc__ = csd.finit.__doc__ + plt.Axes.csd.__doc__
@@ -460,7 +459,7 @@ csd.__doc__ = csd.finit.__doc__
 
 @_spectrum.decorate(_example_=("cohere", None))
 def cohere(plot, *args, **kwargs):
-    """Plot Wrapper of function cohere : Plot the coherence between *x* and *y*.
+    """PlotFactory Wrapper of function cohere : Plot the coherence between *x* and *y*.
 
     contrarly to matplolib.cohere, cohere return a new imgplot-like instance
     ready to plot result of the cohere.

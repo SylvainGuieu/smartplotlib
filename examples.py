@@ -12,16 +12,16 @@ def xcorr():
     corr = xcorr(x, y, usevlines=True, maxlags=50, normed=True, lw=2)
 
     # for my correlation better add a black line at y=0
-    corr.axes.axhline.update(y=0, xmin=0, xmax=1, color='black', lw=2)
+    corr.subplot.axhline.update(y=0, xmin=0, xmax=1, color='black', lw=2)
 
     # clear the figure
     corr.fclear()
     # turn on grid
-    corr.axes.grid(True)
+    corr.subplot.grid(True)
 
     # set the axes plot the y=0 line, plot vlines of the corelation
     # plus scatter to make it nice, show and canvas.draw the figure
-    corr.go("aset", "axes.axhline", "vlines", "scatter",
+    corr.go("aset", "subplot.axhline", "vlines", "scatter",
             "show", "draw")
     return corr
 
@@ -112,7 +112,7 @@ def polyfit():
 def specgram():
     """ smartplotlib example of specgram """
     from pylab import np, pi, sin, arange, logical_and, where, randn, cm
-    from smartplotlib import xyplot, axes
+    from smartplotlib import xyplot, subplot
 
 
     dt = 0.0005
@@ -156,7 +156,7 @@ def spectrum():
     with smartplotlib
     """
     import numpy as np
-    from smartplotlib import xyplot, axes
+    from smartplotlib import xyplot, subplot
 
     ###
     # make some data
@@ -339,7 +339,7 @@ def xbinedstat():
 
 def histogram():
     import numpy as np
-    from smartplotlib import dataplot, axes, alias
+    from smartplotlib import dataplot, subplot, alias
 
 
     data1 = np.random.normal(size=(1000,))
@@ -388,7 +388,18 @@ def histogram():
     ##
     # fit the distribution an plot
     # label=True will generate a label with fit result
-    h2.distribfit(label=True).plot()
+    fit = h2.distribfit(label=True)
+    fit.plot(); fit.derive(min=-fit["scale"]+fit["loc"],
+                           max=+fit["scale"]+fit["loc"],
+                           label=None,
+                           npoints=2, color="red"
+                           ).plot()
+
+
+    for s in h2.stat.iter(fstat=["-std","+std"]):
+        s().axvline(color="red", linestyle=":")
+
+
     h2.legend() # should print fir result
 
     ####
@@ -429,13 +440,13 @@ def histogram():
 
     return h1, h2, h3, h4
 
-    a = axes(figure="matplotlib.hist", go=["fclear","aset"],
-             sharey=h, sharex=h, axes=211
-             )
+    a = subplot(figure="matplotlib.hist", go=["fclear","aset"],
+               sharey=h, sharex=h, axes=211
+               )
     a.hist([data1,data2], bins=bins, color=["blue", "green"],
            stacked=True, align=align)
 
-    a2 = axes(figure="matplotlib.hist",
+    a2 = subplot(figure="matplotlib.hist",
               sharey=h2, sharex=h2,
               axes=212)
     a2.hist([data1,data2], bins=bins, color=["blue", "green"],
@@ -453,7 +464,7 @@ def cohere():
     mpl_examples/pylab_examples/cohere_demo.py
     """
     import numpy as np
-    from smartplotlib import xyplot, axes, alias
+    from smartplotlib import xyplot, subplot, alias
 
 
     # make a little extra space between the subplots
@@ -513,7 +524,7 @@ def annotates():
 def eventplot():
     """ copied from http://matplotlib.org/xkcd/examples/pylab_examples/eventplot_demo.html"""
     import numpy as np
-    from smartplotlib import axes
+    from smartplotlib import subplot
     np.random.seed(0)
 
     # create random data
@@ -535,7 +546,7 @@ def eventplot():
 
 
 
-    ax1, ax2 = axes.iteraxes(2,1, title=["horizontal eventplot", "vertical eventplot"],
+    ax1, ax2 = subplot.iteraxes(2,1, title=["horizontal eventplot", "vertical eventplot"],
                              orientation=["horizontal", "vertical"],
                              figure="way 1"
                             )
@@ -554,7 +565,7 @@ def eventplot():
     ######
     # another way to do the same
 
-    axs = axes(figure="way 2")
+    axs = subplot(figure="way 2")
     ##
     # data are both the same, the only things that will change
     # is the orienatation and title

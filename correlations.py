@@ -6,7 +6,7 @@ from .plotclasses import (XYPlot, xyplot)
 
 @xyplot.decorate()
 def xcorr(plot, *args, **kwargs):
-    """ Plot Wrapper of function xcorr
+    """ PlotFactory Wrapper of function xcorr
 
     contrarly to matplolib.xcorr, xcorr return a new xyplot-like instance
     ready to plot result of the correlation.

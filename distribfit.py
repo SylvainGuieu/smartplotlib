@@ -4,7 +4,7 @@ from . import plotfuncs as pfs
 from .plotclasses import (XYPlot, DataPlot, DataXYPlot, xyplot, dataxyplot)
 
 from .recursive import KWS, alias
-from .base import Plot
+from .base import PlotFactory
 
 ###
 # TODO complete list of import and lookup
@@ -60,8 +60,19 @@ def distribfit(plot, *args, **kwargs):
         _min = -4*scale+loc
     if _max is None:
        _max =  4*scale+loc
-    x = np.linspace(_min, _max, npoints)
-    y = distrib.pdf(x, loc, scale)*amplitude
+    #x = np.linspace(_min, _max, npoints)
+    #y = distrib.pdf(x, loc, scale)*amplitude
+
+    x = alias(["min","max","npoints"],
+                  lambda p,a: np.linspace(p[a[0]],p[a[1]],p[a[2]]),
+                  "-> linspace(min, max, npoints)")
+    y = alias("x",
+              lambda p,x: distrib.pdf(p[x],loc, scale)*amplitude,
+              "-> fit(x)"
+              )
+    #x = np.linspace(_min, _max, npoints)
+    #y = distrib.pdf(x, loc, scale)*amplitude
+
 
 
     label = plot.get("label", None)
@@ -77,7 +88,7 @@ def distribfit(plot, *args, **kwargs):
 
     plot.update({di:x, dd:y, dd+"min":0, dd+"max":alias(dd)},
                 min=_min, max=_max, scale=scale, std=alias("scale"),
-                loc=loc, xerr=None, yerr=None, data=data
+                loc=loc, xerr=None, yerr=None, data=data, npoints=npoints
                )
 
     plot.goifgo()

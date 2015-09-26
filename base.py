@@ -4,7 +4,7 @@ from .recursive import RecObject, RecFunc
 from .stack import stack
 import inspect
 
-class Plot(RecObject):
+class PlotFactory(RecObject):
     _unlinked = tuple()#("go","_go_results")
     _default_params = {"go":None, "_go_results":None, "_example_":None}
     _example = None
@@ -35,7 +35,7 @@ class Plot(RecObject):
             return get_example(*ex)
 
     def __add__(self, right):
-        if not isinstance( right, (Plot,PlotFunc,stack)):
+        if not isinstance( right, (PlotFactory,PlotFunc,stack)):
             raise TypeError("can add a plot only to a plot, plotfunc or stack (not '%s') "%(type(right)))
         return stack([self, right])
 
@@ -66,7 +66,7 @@ class PlotFunc(RecFunc):
             return get_example(*ex)
 
     def __add__(self, right):
-        if not isinstance( right, (Plot,PlotFunc,stack)):
+        if not isinstance( right, (PlotFactory,PlotFunc,stack)):
             raise TypeError("can add a plotfunc only to a plot, plotfunc or stack (not '%s') "%(type(right)))
         return stack([self, right])
 

@@ -108,14 +108,14 @@ def setpfdoc(pf, doc, name):
 
 
 default parameters can be assigned by func['param'] = value
-or inerit from a parent Plot obj. See PlotFunc and Plot doc.
+or inerit from a parent PlotFactory obj. See PlotFunc and PlotFactory doc.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 {doc}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 PlotFunc : All the following args can be assigned by func['param'] = value
-by func.update(param=value) or can inerit from parent Plot :
+by func.update(param=value) or can inerit from parent PlotFactory :
 
 {arglist}
      """
@@ -590,17 +590,11 @@ def _get_plot_args(args, kwargs, triplet=("x","y","fmt"), Ni=_Ntriplet):
 
 
 
-@line2d.decorate(0, "x", "y", "fmt", "scalex", "scaley")
+@line2d.decorate(0, *(("x", "y", "fmt")+tuple(xyfmts)+("scalex", "scaley")))
 def plot(*args, **kwargs):
     axes = get_axes_kw(kwargs)
     args, kwargs = _get_plot_args(args, kwargs)
     return axes.plot(*args, **kwargs)
-
-####
-# Addd the x1, y1, fmt1, x2, y2, fmt2, etc .....
-
-
-plot.args = plot.args+xyfmts
 
 setpfdoc(plot, plt.Axes.plot.__doc__, "plot")
 
@@ -618,11 +612,13 @@ setpfdoc(errorbar, plt.Axes.errorbar.__doc__, "errorbar")
 
 
 
-@plot.decorate("where")
+@plot.decorate(0,*(("x", "y", "fmt")+tuple(xyfmts)+("scalex", "scaley", "where")))
 def step(*args, **kwargs):
     args, kwargs = _get_plot_args(args, kwargs)
     axes = get_axes_kw(kwargs)
     return axes.step(*args, **kwargs)
+
+
 
 @line2d.decorate(2, "xdates", "ydates", "fmt", "tz", "xdate", "ydate")
 def plot_date(*args, **kwargs):
@@ -696,8 +692,8 @@ def hlines(y, xmin, xmax,  **kwargs):
 setpfdoc(hlines, plt.Axes.hlines.__doc__, "hlines")
 
 
-@line2d.decorate(3, "lines", "min", "max", "direction")
-def lines(_lines, _min, _max, direction="y", **kwargs):
+@line2d.decorate(3, "data", "min", "max", "direction")
+def lines(data, _min, _max, direction="y", **kwargs):
     """execute hlines if direction=='y' or vlines if direction=="x"
 
     This is a PlotFunc wrapper, all parameters can be substitued form parents
@@ -716,9 +712,9 @@ def lines(_lines, _min, _max, direction="y", **kwargs):
 
     """
     if direction in ["y","Y",0]:
-        return hlines(_lines, _min, _max, **kwargs)
+        return hlines(data, _min, _max, **kwargs)
     if direction in  ["x", "X", 1]:
-        return vlines(_lines, _min, _max, **kwargs)
+        return vlines(data, _min, _max, **kwargs)
     raise ValueError("direction must be 'y' or 'x' , 1 or 0 got '%s'"%direction)
 
 @line2d.decorate(0, "y", "xmin", "xmax")
@@ -731,8 +727,8 @@ def axhline(*args, **kwargs):
     return axes.axhline(y, *args, **kwargs)
 setpfdoc(axhline, plt.Axes.axhline.__doc__, "axhlines")
 
-@line2d.decorate(0, "lines", "axmin", "axmax", "direction")
-def axline(lines=0, axmin=0, axmax=1, direction="y", **kwargs):
+@line2d.decorate(0, "value", "axmin", "axmax", "direction")
+def axline(value=0, axmin=0, axmax=1, direction="y", **kwargs):
     """execute axhline if direction=='y' or axvline if direction=="x"
 
     This is a PlotFunc wrapper, all parameters can be substitued form parents
@@ -751,9 +747,9 @@ def axline(lines=0, axmin=0, axmax=1, direction="y", **kwargs):
 
     """
     if direction in ["y","Y",0]:
-        return axhline(lines, axmin, axmax, **kwargs)
+        return axhline(value, axmin, axmax, **kwargs)
     if direction in  ["x", "X", 1]:
-        return axvline(lines, axmin, axmax, **kwargs)
+        return axvline(value, axmin, axmax, **kwargs)
     raise ValueError("direction must be 'y' or 'x' , 1 or 0 got '%s'"%direction)
 
 
@@ -838,13 +834,39 @@ def fill_betweenx(*args, **kwargs):
 setpfdoc(fill_betweenx, plt.Axes.fill_betweenx.__doc__, "fill_between")
 
 
-@rectangle.decorate(2, 'edge', 'height', 'width', 'base', 'align', 'orientation')
-def bar(edge, height, width=0.8, base=None, **kwargs):
+@rectangle.decorate(2, 'edge', 'height', 'width', 'base', 'rwidth', 'align', "direction", 'orientation')
+def bar(edge, height, width=0.8, base=None, rwidth=1.0, offset=0.0,  **kwargs):
+    """ PlotFunc. More general than the matplotlib bar function
+
+    Compared to the  matplolib function the arg names has changed plus new ones:
+        rwidth, offset, direction
+
+    Args:
+        edge (Array like): array of left (if direction="y")
+            or bottom (if direction="x") corner of bars
+        height (scalar/array): size of bar in direction of "direction"
+        width (scalar/array) : (default 0.8) size of the bar in the oposote "direction"
+        base (scalar/array) : bottom (if direction="x") left (if direction="y') of
+            the bars
+
+        align : if "center" the edge coordinates become the center of the bar
+
+        rwidth (scalar/array): a relative width factor (default 1.0) the final width will be
+            width*rwidth
+        offset (scalar/array): offset of bars. final edges will be edges+offset
+        direction ("y" or "x") : if "y" plot verticaly if "x" plot horizontaly
+        orientation ("vertical" or "horizontal") : for compatibility raisons,
+            used only if direction is not defined otherwhise it is ignored
+    """
     kwargs.pop("xy", None)
     kwargs.pop("x", None)
     kwargs.pop("y", None)
 
-    d =  kwargs.get("direction", "y")
+
+    if "direction" in kwargs:
+        kwargs.pop("orientation", None)
+
+    d =  kwargs.pop("direction", "y")
     axes = get_axes_kw(kwargs)
     if d in ['y','Y',0]:
         func = axes.bar
@@ -852,12 +874,36 @@ def bar(edge, height, width=0.8, base=None, **kwargs):
         func = axes.barh
     else:
         ValueError("direction must be 'y' or 'x' (0 or 1) got '%s'"%d)
-    return axes.bar(edge, height, width, base, **kwargs)
+    return func(edge+offset, height, width*rwidth, base, **kwargs)
 
 
 
+def _fill_step_process(x0,y0, bottom):
+    """ return a polygon that envelop what would have
+    been ploted with bar( ..., align="center")
+    """
+    dim = len(x0)
 
+    x = np.zeros(dim*2+2, np.float)
+    y = np.zeros(dim*2+2, np.float)
 
+    delta = np.diff(x0)/2.
+    x[1:-3:2] = x0[:-1]-delta
+    x[2:-2:2]  = x0[:-1]+delta
+    y[1:-2:2] = y0
+    y[2:-1:2]  = y0
+    x[-3] = x0[-1]-delta[-1]
+    x[-2] = x0[-1]+delta[-1]
+
+    x[0] = x[1]
+    x[-1] = x[-2]
+    if bottom is not None:
+        y[0] = bottom
+        y[-1] = bottom
+    else:
+        y[0] = y0[0]
+        y[-1] = y0[-1]
+    return x, y
 
 
 xymarker = sum((["x%d"%i,"Y%d"%i, "marker%d"%i] for i in range(1,10)), [])
@@ -870,6 +916,17 @@ def fill(*args, **kwargs):
         if (x,y,m) != (None,None,None):
             args+=(x,y,m)
     return get_axes_kw(kwargs).fill(*args, **kwargs)
+
+
+fillstep = fill.derive(2, "x", "y", "marker", "bottom")
+@fillstep.caller
+def fillstep(x, y,**kwargs):
+    bottom = kwargs.pop("bottom", None)
+    x, y = _fill_step_process(np.asarray(x),
+                              np.asarray(y),
+                              bottom)
+
+    return get_axes_kw(kwargs).fill(x, y, **kwargs)
 
 
 ###############################################################
@@ -968,16 +1025,16 @@ polygon = plotfunc.derive('closed', 'xy', 'fill', 'fc', 'lw', 'ls', 'hatch', 'li
 'picker', 'clip_path', 'visible', 'url', 'gid')
 
 
-polygon.decorate(2, "xmin", "xmax", "ymin", "ymax")
+@polygon.decorate(2, "xmin", "xmax", "ymin", "ymax")
 def axvspan(xmin, xmax, ymin=0, ymax=1,**kwargs):
     get_axes_kw(kwargs).axvspan(xmin, xmax, ymin, ymax, **kwargs)
 
-polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
+@polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
 def axhspan(ymin, ymax, xmin=0, xmax=1,**kwargs):
     get_axes_kw(kwargs).axvspan(ymin, ymax, xmin, xmax, **kwargs)
 
-polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
-def axspan(lines1, lines2, axmin=0, axmax=1, **kwargs):
+@polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
+def axspan(value1, value2, axmin=0, axmax=1, **kwargs):
 
 
     d =  kwargs.get("direction", "y")
@@ -1329,6 +1386,22 @@ class _BaseFigAxes(object):
     draw = draw
     legend = legend
     grid = grid
+    def get_axes(self):
+        """ Return the matplotlib axes linked """
+        return get_axes(self.get("axes", None), self.get("figure", None))
+    def get_figure(self):
+        """ Return the matplotlib figure linked """
+        return get_figure(self.get("figure", None), self.get("axes", None))
+    @property
+    def axes(self):
+        return self.get_axes()
+    @property
+    def figure(self):
+        return self.get_figure()
+
+
+
+
 
 
 

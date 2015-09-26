@@ -83,22 +83,22 @@ def stat(plot, *args, **kwargs):
         #    value = [m-rms*sigma, m+rms*sigma]
 
 
-        plot["stat"] = value
-        plot["lines"] = [value]
-
-        plot[dd] = alias("lines")
+        plot["value"] = value
+        #plot["lines"] = [value]
+        #plot[dd] = alias("lines")
 
         last = plot.get("last",None)
-        if last:
-            plot.update(lines1=last[-1], lines2=[value])
 
         # save now the curent in last
-        plot["last"] = [value]
-
+        plot["last"] = value
+        if last is not None:
+            # the last in previous
+            plot["previous"] = last
 
         indexes = plot.get("indexes", None)
         if indexes is not None:
-            plot.update( min=np.min(indexes), max=np.max(indexes)
+            plot.update( min=np.min(indexes),
+                         max=np.max(indexes)
                         )
             plot[dd+"min"] = alias("min")
             plot[dd+"max"] = alias("max")

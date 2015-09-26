@@ -140,14 +140,14 @@ def _makebinedstatplot(plot, m, bins, err):
 
     width = dr*totwidth
 
-    baralign = "edge"
+
+    realx = (bins[:-1]+bins[1:])/2.
     if align in ['mid', "center"]:
-        xbins = (bins[:-1]+bins[1:])/2.
-        baralign = "center"
+        xbins = realx
     elif align == 'right':
-        xbins = (bins[:-1]+(totwidth*(1.-dr)))
+        xbins = (realx+(totwidth*(1.-dr))/2.)
     else:
-        xbins = bins[:-1]
+        xbins = (realx-(totwidth*(1.-dr))/2.)
 
     if bottom is None:
         bottom = np.zeros(len(m), np.float)
@@ -170,14 +170,16 @@ def _makebinedstatplot(plot, m, bins, err):
                 lasty=alias("y"),
                 count=count+1,
                )
+    plot.step.update(where="mid")
 
-    plot.bar.update(align=baralign,
+
+    plot.bar.update(align="center",
                     edge=oxbins,
                     height=hist_plot, width=width,
-                    base=bottom,
+                    base=bottom, rwidth=1.0,
                     yerr=None, xerr=None
                    )
-
+    plot.fillstep.update(x=realx)
 
     plot.fill_between.update(indexes=xbins,
                              data1=alias("y") if lasty is None else lasty,
@@ -285,6 +287,7 @@ def histogram2d(plot, *args, **kwargs):
     plot.goifgo()
 
 
+histogram["_example_"] = ("histogram", None)
 
 DataPlot.histogram = histogram
 DataXYPlot.histogram = histogram

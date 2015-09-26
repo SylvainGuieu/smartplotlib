@@ -2,7 +2,7 @@ from __future__ import division, absolute_import, print_function
 
 from . import plotfuncs as pfs
 from .recursive import KWS, alias
-from .base import Plot
+from .base import PlotFactory
 import numpy as np
 from .plotclasses import (DataPlot, xyplot, XYPlot, DataXYPlot,
                           dataxyplot
@@ -140,7 +140,7 @@ def binedstat(plot, *args,**kwargs):
            on a single value in that bin.
            if True the error is the error of the bin, e.i.: std/sqrt(count)
 
-      go : a go list to execute after creation (see Plot doc)
+      go : a go list to execute after creation (see PlotFactory doc)
         example ["line", "fill"]
 
     Affected Plot Parameters:

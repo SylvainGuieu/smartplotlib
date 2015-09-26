@@ -3,8 +3,8 @@ import numpy as np
 from . import plotfuncs as pfs
 from .plotclasses import (XYPlot, xyplot, DataXYPlot)
 
-from .recursive import KWS
-from .base import Plot
+from .recursive import KWS, alias
+from .base import PlotFactory
 
 
 class PolyFit(XYPlot):
@@ -32,6 +32,13 @@ class PolyFit(XYPlot):
 
         return polyfitcoef2text(coeff, label_fmt, label_x)
 
+    def get_repr(self, dim):
+        out = ""
+        for i,c in zip(range(dim+1),list("abcdefghijklmnopqrstuvwxyz")):
+            out += ("+" if i else "")+c+("x^%d"%i if i else "")
+
+        return out
+
     @property
     def x(self):
         return self["x"] if self.isinitialized else None
@@ -48,9 +55,9 @@ class PolyFit(XYPlot):
 
     @staticmethod
     def finit(plot, *args, **kwargs):
-        """ Plot object where polynomial fit is performed
+        """ PlotFactory object where a polynomial fit is performed
 
-        As all Plot object, all parameters can inerit from a parent plot if any.
+        As all PlotFactory object, all parameters can inerit from a parent plot if any.
 
         Args:
           Used for the fit:
@@ -95,15 +102,16 @@ class PolyFit(XYPlot):
             xerr, yerr : set to None
 
         Example:
-            >>> myfit = PolyFit(dim=2, color="red", linestyle="--")
-            >>> axes = plt.axes()
+            >>> import smartplotlib as splt
+            >>> myfit = splt.polyfit.derive(dim=2, color="red", linestyle="--")
+            >>> axes = splt.subplot()
             >>> x = np.arange(100);
             >>> yerr = np.random.rand(100)*2.0*x
             >>> y = x*x + yerr
             >>> axes.errorbar(x,y, yerr=yerr, linestyle="None")
 
-            >>> myfit(x, y).line()
-            >>> myfit(x, y, xrange=(1,30), dim=1, color="green", xmax=100).line()
+            >>> myfit(x, y).plot()
+            >>> myfit(x, y, xrange=(1,30), dim=1, color="green", xmax=100).plot()
 
         """
         plot.update(kwargs.get(KWS, {}), **kwargs)
@@ -142,8 +150,12 @@ class PolyFit(XYPlot):
         plot["xmax"] = xmax
         plot["npoints"] = npoints
 
-        x = np.linspace(xmin, xmax, npoints)
-        y = get_model(x, coeff)
+        x = alias(["xmin","xmax","npoints"],
+                  lambda p,a: np.linspace(p[a[0]],p[a[1]],p[a[2]]),
+                  "-> linspace(xmin, xmax, npoints)")
+
+        y = alias("x", lambda p,x: get_model(p[x], coeff),
+                   "-> y_fit(x)")
         plot["x"] = x
         plot["y"] = y
         plot["ymin"] = 0
