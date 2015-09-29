@@ -493,7 +493,12 @@ def colorbar(*args, **kwargs):
     args = (mappable,)+args
     ax = kwargs.pop("ax", None)
     if ax is not None:
-        kwargs["ax"] = get_axes(ax, kwargs.get("figure",None))
+        # ax can be a list of figures
+        if hasattr(ax, "__iter__") and not isinstance(ax, tuple):
+            f = kwargs.get("figure",None)
+            kwargs["ax"] = [get_axes(a,f) for a in ax]
+        else:
+            kwargs["ax"] = get_axes(ax, kwargs.get("figure",None))
 
     return get_figure_kw(kwargs).colorbar(*args, **kwargs)
 
@@ -1406,6 +1411,7 @@ class _BaseFigAxes(object):
     draw = draw
     legend = legend
     grid = grid
+    savefig = savefig
     def get_axes(self):
         """ Return the matplotlib axes linked """
         return get_axes(self.get("axes", None), self.get("figure", None))
