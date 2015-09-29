@@ -3,7 +3,7 @@ from __future__ import division, absolute_import, print_function
 from . import plotfuncs as pfs
 from .recursive import  KWS, alias
 from .plotclasses import (DataPlot, DataXYPlot, ScalarPlot, scalarplot,
-                          XYPlot
+                          XYPlot, ImgPlot
                           )
 
 import numpy as np
@@ -167,7 +167,12 @@ DataXYPlot.min    = min
 DataXYPlot.max    = max
 DataXYPlot.std    = std
 
-
+ImgPlot.stat   = stat
+ImgPlot.median = median
+ImgPlot.mean   = mean
+ImgPlot.min    = min
+ImgPlot.max    = max
+ImgPlot.std    = std
 
 
 

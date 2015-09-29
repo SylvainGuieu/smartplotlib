@@ -17,6 +17,7 @@ from .correlations import xcorr
 from .polyfit import polyfit, linearfit
 from .binedstatplot import binedstat, ybinedstat, xbinedstat
 from .statplot import stat
+from .img2data import img2data
 from .specgram import (specgram, magnitude_spectrum, angle_spectrum,
                        phase_spectrum, cohere)
 
@@ -72,6 +73,7 @@ Plots.xyplot = xyplot
 # indexes are None by default
 XYPlot.xdata = dataplot.derive(data=alias("x"), indexes=alias("y",lambda p,k:p.get(k,None)))
 XYPlot.ydata = dataplot.derive(data=alias("y"), indexes=alias("x",lambda p,k:p.get(k,None)))
+
 DataXYPlot.xdata = dataplot.derive(data=alias("x"))
 DataXYPlot.ydata = dataplot.derive(data=alias("y"))
 DataXYPlot.data = dataplot

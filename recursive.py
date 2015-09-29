@@ -3,22 +3,33 @@ from __future__ import division, absolute_import, print_function
 import weakref
 import inspect
 
+
+""" version 2 of recursive
+
+It is slower than the previous version recursive0 but it avoid
+cycle references.
+However as it is it will create a lot of types, because for every
+RecObject of a RecObject() instance a type is created on the fly and
+recorded in __recobjects__. For every __get__, a.b, b is a new instance
+of the stored  __recobjects__ class. That way it is also slower
+
+Does creating many types (class) can cause problems ? They are subclassed
+so should not take that much memories.
+  Another solution would be not to store a new type, but an instance maker
+which save a class and return un instance.
+
+This method has also one drawback :  a.b is a.b -> False because b is always new
+I am not sure in witch situation it can cause problems.
+
+"""
+
+
 __all__ = ["RecObject", "RecFunc", "cycle", "lcycle", "loop", "fcycle",
            "popargs", "parseargs", "merge_args", "extract_args",
            "recobject", "alias"
           ]
 
-
 ALLOW_FAST_KEYS = True
-
-## cycle references
-## for parent.child, child is stored inside parent in a diciotnary __recobjects__
-## child hold also the parent: parent.child.parent is parent
-## On solution is to use weakref, but it can cause not obious problems for the
-## user.
-## As far as I understood cycle references are not a problem if the finalizer
-## __del__ is not defined. So let's not use it for now but keep both for easy switch
-USE_WEAKREF = False
 
 """ key name which will substitued to kwargs in the default finit of RecObject """
 KWS = "params"
@@ -41,25 +52,6 @@ FCYCLE = 4
 def newid(obj):
     """ id returned for a RecObject or RecFunc asked at __init__"""
     return id(obj)
-
-def getparameters(opt, ids):
-    """From a dictionary and a id tuple return the parameter dictionary
-
-    The Dictionary is created if non existant
-    """
-    if not ids in opt:
-        opt[ids] = {}
-    return opt[ids]
-
-def getparameters_r(opt, ids):
-    """read only equivalent of getparameters.
-
-    unlike getparameters if the dictionary does not exists return
-    a new empty dictionary
-    """
-    if not ids in opt:
-        return {}
-    return opt[ids]
 
 
 def getobj(obj, path, getattr=getattr):
@@ -739,7 +731,178 @@ def recfunc(*args, **kwargs):
 
 
 
+class _History_(object):
+    """ a class to record parameter history path """
+    def __init__(self, i, p, data=None):
+        """ i are instances p are parents """
+        self.i_params, self.i = i
+        self.p_params, self.p = p
+        self.data = data
 
+
+    def copy(self, deep=False):
+        if deep:
+            new = _History_((self.i_params.copy(), self.i.copy() if self.i else None),
+                            (self.p_params.copy(), self.p.copy() if self.p else None),
+                            self.data
+                            )
+        else:
+            new = _History_((self.i_params, self.i.copy() if self.i else None),
+                            (self.p_params, self.p.copy() if self.p else None),
+                            self.data
+                            )
+        return new
+
+    def getdata(self):
+        if self.data:
+            return data
+        if self.p:
+            return self.p.getdata()
+        return None
+
+    def all(self):
+        params = self.i_params.copy()
+        if self.i:
+            for k,v in self.i.all().iteritems():
+                params.setdefault(k,v)
+
+        for k,v in self.p_params.iteritems():
+            params.setdefault(k,v)
+
+        if self.p:
+            for k,v in self.p.all().iteritems():
+                params.setdefault(k,v)
+        return params
+
+    def _search(self, item, spath=""):
+        try:
+            value = self.i_params[item]
+        except KeyError:
+            pass
+        else:
+            return value, spath+PSI
+
+
+        if self.i:
+            try:
+                value, spath = self.i._search(item, spath)
+            except KeyError:
+                pass
+            else:
+                return value, spath+PSI
+
+        try:
+            value = self.p_params[item]
+        except KeyError:
+            pass
+        else:
+            return value, spath+PSP
+
+        if self.p:
+            try:
+                value, spath = self.p._search(item, spath)
+            except KeyError:
+                pass
+            else:
+                return value, spath+PSP
+
+        raise KeyError('%s'%item)
+
+    def _searchip(self, item, spath=""):
+
+        try:
+            value, spath = self._searchi(item, spath)
+        except KeyError:
+            pass
+        else:
+            return value, spath
+
+        try:
+            value = self.p_params[item]
+        except KeyError:
+            pass
+        else:
+            return value, spath+PSP
+
+        if self.p:
+            try:
+                value, spath = self.p._searchip(item, spath)
+            except KeyError:
+                pass
+            else:
+                return value, spath+PSP
+
+        return self._search(item, spath)
+
+
+
+    def _searchi(self, item, spath=""):
+        try:
+            value = self.i_params[item]
+        except KeyError:
+            pass
+        else:
+            return value, spath+PSI
+
+
+        if self.i:
+            try:
+                value, spath = self.i._searchi(item, spath)
+            except KeyError:
+                pass
+            else:
+                return value, spath+PSI
+        raise KeyError('%s'%item)
+
+    def _searchp(self, item, spath=""):
+        try:
+            value = self.p_params[item]
+        except KeyError:
+            pass
+        else:
+            return value, spath+PSP
+
+        if self.p:
+            try:
+                value, spath = self.p._searchp(item, spath)
+            except KeyError:
+                pass
+            else:
+                return value, spath+PSP
+
+        raise KeyError('%s'%item)
+
+
+class _RecObject_Instanced(object):
+    _derived_cl = True
+    def __init__(self, ids, i, p, new=False, data=None):
+        if new:
+            self._params  = {}
+        ih, ph, pdata = None, None, None
+        if i:
+            ih = i._history
+        if p:
+            ph = p._history
+            pdata = ph.data
+
+        ip = i._params if i else {}
+        pp = p._params if p else {}
+
+        if i and i._default_params:
+            # default paramters can inerit from an parentinstance
+            # but never from a parent.
+            # need to copy the instance value here to eraze
+            # the default value made by init
+            self._params.update({k:i.locals[k] for k in i._default_params})
+
+
+        self._history = _History_( (ip, ih),
+                                    (pp, ph), pdata )
+
+        self.ids = ids or newid(self)
+        self._data = data
+        if self.finit and self.finit.__doc__:
+            self.__doc__ = self.finit.__doc__
 
 
 class RecObject(object):
@@ -999,8 +1162,9 @@ class RecObject(object):
 
     """
     _initialized = False
-    _parent = None
+
     _default_params = {}
+    _derived_cl = False
     """ _default_params are always set localy they can be copied from an
     instance but never from a parent. """
 
@@ -1019,9 +1183,11 @@ class RecObject(object):
 
         self.locals.update(params.get(KWS,{}), **params)
 
+
         self.__recobjects__ = {}
-        self._parentinstance = None
-        self._parent = None
+
+        self._history = _History_( ({},None), ({},None) )
+
 
     @staticmethod
     def finit(plot, params={}, **kwargs):
@@ -1051,12 +1217,10 @@ class RecObject(object):
 
         All modification of the locals dictionary will not affect
         parents but only the object itself.
-        in other words:
-         recobj.locals != recobj.parent.locals != recobj.parentinstance.locals
 
         """
         return self._params
-        #return getparameters(self._params, self.ids)
+
 
 
     @property
@@ -1067,17 +1231,9 @@ class RecObject(object):
         parents.
 
         """
-        params = self.locals.copy()
-        if self.parentinstance:
-            for k,v in self.parentinstance.all.iteritems():
-                params.setdefault(k,v)
-
-        if self.parent:
-            for k,v in self.parent.all.iteritems():
-                params.setdefault(k,v)
-
+        params = self._history.all()
+        params.update(self.locals)
         return params
-
 
 
     def __call__(self, *args, **kwargs):
@@ -1088,7 +1244,6 @@ class RecObject(object):
         # reset the root ids
 
         new._initialized = 1 # one -> in instance of beeing initialized
-        parent = self.parent # hold a parent reference here
         _none_ = new.finit(new, *args, **kwargs)
         if _none_ is not None:
             raise TypeError("The init function should return None got type '%s'"%type(_none_))
@@ -1409,30 +1564,51 @@ class RecObject(object):
         return new
 
     def _derive(self, parent):
-        new = self.__class__(self.finit)
 
-        new._data = self._data
-        #new.ids = self.ids
-        new._parentinstance = self
+        if self._derived_cl:
+            new = self.__class__(None, self, parent, True, self.data)
+        else:
+            new = self._derive_cl()(None,self, parent, True, self.data)
 
-        new.parent =  parent
+        new.finit = self.finit
 
-        if self._default_params:
+        #if self._default_params:
             # default paramters can inerit from an parentinstance
             # but never from a parent.
             # need to copy the instance value here to eraze
             # the default value made by init
-            new.locals.update({k:self.locals[k] for k in self._default_params})
-
-
-        __recobjects__ = {}
-        for ids,psub in self.__recobjects__.iteritems():
-            __recobjects__[ids] = psub._derive(new)
-
-        new.__recobjects__ = __recobjects__
+        #    new.locals.update({k:self[k] for k in self._default_params})
         return new
 
+    def _derive_cl(self):
+        cl = self.__class__
 
+        if self._derived_cl:
+            newcl = type(cl.__name__, (cl,), self.__dict__)
+        else:
+            newcl = type(cl.__name__+"_I", (_RecObject_Instanced, cl), self.__dict__)
+
+        ####
+        # We need to make all the recorded __recobjects__ new
+        # using the _copy_cl method (copy the class)
+        __recobjects__ = {}
+        for k, sub in self.__recobjects__.iteritems():
+                __recobjects__[k] = sub._copy_cl()
+        newcl._params = self._default_params.copy()
+
+        newcl.__recobjects__ = __recobjects__
+
+        newcl.finit = staticmethod(self.finit)
+        return newcl
+    @classmethod
+    def _copy_cl(cl):
+        newcl = type(cl.__name__, (cl,), {})
+
+        __recobjects__ = {}
+        for k, sub in cl.__recobjects__.iteritems():
+            __recobjects__[k] = sub._copy_cl()
+        newcl.__recobjects__ = __recobjects__
+        return newcl
 
     def _new_instance(self, parent):
         """ private func. Return a new instance from a parent.
@@ -1449,48 +1625,70 @@ class RecObject(object):
 
         if isinstance(parent, RecObject):
             recchilds = parent.__recobjects__
-            if self.ids in recchilds:
-                return recchilds[self.ids]
+            if not (self.ids in recchilds):
+                recchilds[self.ids] = self._derive_cl()
 
-            if False: ##
-                new = self.__class__(self.finit)
-                new._data = parent._data
-                new.ids  = self.ids
-                new._params = {}
-                new._parentinstance = self
-                new.__recobjects__ = self.__recobjects__
-                new.parent = parent
-            else:
-                new = self._derive(parent)
-
-            #new._parent = parent
-            #parent.__recobjects__[self.ids] = new
-            recchilds[self.ids] = new
-
-            return new
+            return recchilds[self.ids](self.ids, self, parent)
 
         else:
             data = parent
             if not hasattr(data, "__recobjects__"):
                 data.__recobjects__ = {}
 
-            if self.ids in data.__recobjects__:
-                return data.__recobjects__[self.ids]
+            if not (self.ids in data.__recobjects__):
+                data.__recobjects__[self.ids] = self._derive_cl()
+            return data.__recobjects__[self.ids](self.ids, self, None, False, data)
 
-            if False:
-                new = self.__class__(self.finit)
+    def get_data(self, data=None):
+        """ If the curent object as a data attached return it
+        else return the default (unique argument)
 
-                new._data = weakref.ref(data)
-                new.ids = self.ids
-                new._parentinstance = self
-                new._parent = self._parent
-            else:
-                new = self._derive(self._parent)
-                new._data = weakref.ref(data)
+        A RecObject has a data attached if it comes from a non-recobject instance
+        e.i :   data.a.get_data() is data
+        Where 'a' is a RecObject and 'data' any othe object
 
-            data.__recobjects__[self.ids] = new
+        Args:
+            data: the default data if self has no data
 
-        return new
+        See Also:
+            parse_data : get and set at the same time
+            set_data :  set the data
+        """
+        return self.data or data
+
+    def parse_data(self, data=None):
+        """ parse_data(data) -> set the data and return it not None else return the object data
+
+        Args:
+            data(Optoinal[any]): data to set and return (anything else than None)
+
+        Returns:
+            data or self.data
+
+        Raises:
+            ValueError if data is None and object has no data
+        See Also:
+            get_data : juste return data or a default
+            set_data : set the data
+
+        """
+        if data is None:
+            data = self.data
+            if data is None:
+                raise ValueError("%s object has no data"%self.__class__.__name__)
+            return data
+        else:
+            self.set_data(data)
+            return data
+
+    def set_data(self, data):
+        """ set the data in the object, return None
+
+        obj.set_data(data)
+        obj.data is data
+        """
+        self._data = data
+
 
     @property
     def data(self):
@@ -1504,10 +1702,9 @@ class RecObject(object):
 
         """
         if self._data:
-            data = self._data()
-            if data is None:
-                print("Warning Data object deleted")
-            return data
+            return self._data
+
+        return self._history.getdata()
 
     @property
     def hasdata(self):
@@ -1515,74 +1712,24 @@ class RecObject(object):
         return self._data and (self._data() is not None)
 
 
-    if USE_WEAKREF:
-        @property
-        def parent(self):
-            """ parent RecObject if any or None
-
-            parent.recobj is recobj.parent
-
-
-            parent is set with a weakref, if the parent object is dead, None is
-            return and a warning is printed. To avoid unwanted warning use
-            hasparent attribute.
-
-            """
-            parent = self._parent
-            if parent:
-                if isinstance(parent, weakref.ref):
-                    parent = parent()
-                    if parent is None:
-                        print("Warning Parent object deleted")
-                return parent
-
-        @parent.setter
-        def parent(self, parent):
-            if isinstance(parent, weakref.ref):
-                self._parent = parent
-            elif parent:
-                self._parent = weakref.ref(parent)
-    else:
-        @property
-        def parent(self):
-            """ parent RecObject if any or None """
-            return self._parent
-
-        @parent.setter
-        def parent(self, parent):
-            self._parent = parent
-
-
-    @property
-    def hasparent(self):
-        """ True if has parent and parent is not deleted (dead) """
-        return self._parent and (self._parent() is not None)
-
-
-
-    @property
-    def parentinstance(self):
-        """ parent instance if any or None
-
-        if child = pi()  than   child.parentinstance is pi
-        also:
-        if child = pi.derive()  child.parentinstance is pi
-
-        """
-        return self._parentinstance
-
-    #def __del__(self):
-    #    print("freeing plot", self.ids)
-
     def __get__(self, data, cl=None):
         if data is None:
             return self
         return self._new_instance(data)
 
+    # def __getattr__(self, attr):
+    #     """ allow to return a linked RecObject instance
+    #     when this one has been added on self, but not on class
+    #     """
+    #     print ("getattr !!!")
+    #     obj = object.__getattribute__(self, attr)
 
+    #     if isinstance(obj, (RecObject, RecFunc)):
+    #         print("hello")
+    #         return obj.__get__(self)
+    #     return obj
 
-    #####
-    #
+    #######
     # FAST_KEY are obj["a.b.c|item"] form
     #######
     if ALLOW_FAST_KEYS:
@@ -1621,8 +1768,8 @@ class RecObject(object):
         self.locals[item] = value
 
     def _search(self, item, spath=""):
-        """ search the item in locals, than in the parentinstance than
-        in the parent.
+        """ search the item in locals, than in the history, parentinstance first
+        than parent.
         Raises:
             KeyError if not found
         """
@@ -1633,24 +1780,8 @@ class RecObject(object):
         else:
             return value, spath
 
-        if self.parentinstance:
-            try:
-                value, spath = self.parentinstance._search(item, spath)
-            except KeyError:
-                pass
-            else:
-                return value, spath+PSI
+        return self._history._searchip(item, spath)
 
-
-        if self.parent:
-            try:
-                value, spath = self.parent._search(item, spath)
-            except KeyError:
-                pass
-            else:
-                return value, spath+PSP
-
-        raise KeyError("'%s'"%item)
 
     def _return_value(self,value):
         if isinstance(value, alias):
@@ -1680,7 +1811,6 @@ class RecObject(object):
         #####################################
         try:
             value, _ =  self._search(item)
-
         except KeyError:
             pass
         else:
@@ -1721,17 +1851,6 @@ class RecObject(object):
             return False
         return True
 
-    @property
-    def root(self):
-        """ original recobj instance if any
-
-        a.derive().derive().derive().root is a
-        """
-        while self.parentinstance:
-            self = self.parentinstance
-        else:
-            return None
-        return self
 
     @property
     def isinitialized(self):
@@ -1911,6 +2030,7 @@ class RecObject(object):
 
     @property
     def info(self):
+        """ print usefull informations """
         print("{self.__class__.__name__} object ".format(self=self), end="")
         idt = " "*4
         if self.isinitialized:
@@ -1931,7 +2051,21 @@ class RecObject(object):
         print()
         print (idt+"Curent Values : ")
         infos = self._get_value_info()
-        print("\n".join([idt+INFMT.format(*inf) for inf in infos]))
+        reordered = {}
+        for inf in infos:
+            li = len(inf[0])
+            if not li in reordered:
+                reordered[li] = []
+            reordered[li].append(inf)
+
+        keys = reordered.keys()
+        keys.sort()
+
+        for l in keys[::-1]:
+            for inf in reordered[l]:
+                print(idt+INFMT.format(*inf))
+
+        #print("\n".join([idt+INFMT.format(*inf) for inf in infos]))
         print()
 
 
@@ -1945,8 +2079,32 @@ class RecObject(object):
         _go(self, funclist, output, "")
         return output
 
+
+class _RecFunc_Instanced:
+    """ redefine __init__ for an Instanced RecFunc
+    internal use only
+    """
+    _derived_cl = True
+    def __init__(self, ids, i, p, new=False):
+        if new:
+            self._params  = {}
+
+        ih = getattr(i,"_history", None)
+        ph = getattr(p,"_history", None)
+
+        ip = i._params if i else {}
+        pp = p._params if p else {}
+
+        self._history = _History_( (ip, ih),
+                                    (pp, ph) )
+        self.ids = ids or newid(self)
+        if self.fcall and self.fcall.__doc__:
+            self.__doc__ = self.fcall.__doc__
+
+
 class RecFunc(object):
     _default_params = {}
+    _derived_cl = False
     def __init__(self, *args, **params):
 
         nposargs, args, kwargs, anyparams = _build_args(args)
@@ -1965,9 +2123,8 @@ class RecFunc(object):
 
         self.update(params)
 
-        self._parent = None
-        self._parentinstance = None
 
+        self._history = _History_( ({},None), ({},None) )
 
     @property
     def posargnames(self):
@@ -2072,39 +2229,16 @@ class RecFunc(object):
     def _search(self, item, sitem, spath=""):
 
         try:
-            value, spath = self._search_instance(item, sitem, spath)
-        except KeyError:
-            pass
-        else:
-            return value, spath
-
-        if self.parent:
-            try:
-                value, spath = self.parent._search(sitem, spath)
-            except KeyError:
-                pass
-            else:
-                return value, spath+PSP
-
-        raise KeyError("'%s,%s'"%(item,sitem))
-
-
-    def _search_instance(self, item, sitem, spath=""):
-        try:
             value = self.locals[item]
         except KeyError:
             pass
         else:
             return value, spath
 
-        if self.parentinstance:
-            try:
-                value, spath = self.parentinstance._search_instance(item,sitem, spath)
-            except KeyError:
-                pass
-            else:
-                return value, spath+PSI
-        raise KeyError("'%s,%s'"%(item,sitem))
+        try:
+            return self._history._searchip(sitem, spath=spath)
+        except KeyError:
+            raise KeyError("'%s,%s'"%(item,sitem))
 
 
     def __getitem__(self, item, sitem=None):
@@ -2196,17 +2330,12 @@ class RecFunc(object):
         return new
 
     def _derive(self, parent):
-        new = self.__class__()
-        new.__doc__ = self.__doc__
-        new.fcall = self.fcall
+        if self._derived_cl:
+            new = self.__class__(None, self, parent, True)
+        else:
+            new = self._derive_cl()(None, self, parent, True)
 
-        #new.ids = self.ids # not good !!!
-        new._parentinstance = self
-        new.parent = parent
-        new.nposargs = self.nposargs
-        new.args = self.args
-        new.substitutions = self.substitutions
-        new.anyparams = self.anyparams
+        new.fcall = self.fcall
 
         if self._default_params:
             # default paramters can inerit from an parentinstance
@@ -2214,8 +2343,23 @@ class RecFunc(object):
             # need to copy the instance value here to eraze
             # the default value made by init
             new.locals.update({k:self.locals[k] for k in self._default_params})
-
         return new
+
+    @classmethod
+    def _copy_cl(cl):
+        newcl = type(cl.__name__, (cl,), {})
+        #newcl._params = {}
+        return newcl
+
+    def _derive_cl(self):
+        cl = self.__class__
+        if self._derived_cl:
+            newcl = type(cl.__name__, (cl,), self.__dict__)
+        else:
+            newcl = type(cl.__name__+"_I", (_RecFunc_Instanced, cl), self.__dict__)
+        newcl._params = self._default_params.copy()
+        newcl.fcall = staticmethod(self.fcall)
+        return newcl
 
     def derive(self, *args, **params):
         new = self._derive(None)
@@ -2230,71 +2374,12 @@ class RecFunc(object):
 
         if not hasattr(parent, "__recobjects__"):
             parent.__recobjects__ = {}
-        if self.ids in parent.__recobjects__:
-            return parent.__recobjects__[self.ids]
+        if not (self.ids in parent.__recobjects__):
+            parent.__recobjects__[self.ids] = self._derive_cl()
 
-        new = self.__class__()
-        new.args = self.args
-        new.nposargs   = self.nposargs
-        new.substitutions = self.substitutions
-        new.__doc__ = self.__doc__
-        new.fcall = self.fcall
+        _parent = parent if isinstance(parent, RecObject) else None
+        return parent.__recobjects__[self.ids](self.ids, self, _parent)
 
-        new._parentinstance = self
-        new.ids = self.ids
-
-        if isinstance(parent, RecObject):
-            new.parent= parent
-
-        parent.__recobjects__[self.ids] = new
-        return new
-
-
-    if USE_WEAKREF:
-        @property
-        def parent(self):
-            """ parent RecObject if any or None
-
-            parent.recobj is recobj.parent
-
-
-            parent is set with a weakref, if the parent object is dead, None is
-            return and a warning is printed. To avoid unwanted warning use
-            hasparent attribute.
-
-            """
-            parent = self._parent
-            if parent:
-                if isinstance(parent, weakref.ref):
-                    parent = parent()
-                    if parent is None:
-                        print("Warning Parent object deleted")
-                return parent
-
-        @parent.setter
-        def parent(self, parent):
-            if isinstance(parent, weakref.ref):
-                self._parent = parent
-            elif parent:
-                self._parent = weakref.ref(parent)
-    else:
-        @property
-        def parent(self):
-            """ parent RecObject if any or None """
-            return self._parent
-
-        @parent.setter
-        def parent(self, parent):
-            self._parent = parent
-
-
-
-    @property
-    def parentinstance(self):
-        return self._parentinstance
-
-    #def __del__(self):
-    #    print("freeing ", self.ids)
 
     def __get__(self, parent, cl=None):
         if parent is None:
@@ -2328,7 +2413,7 @@ class RecFunc(object):
                 raise TypeError("got multiple values for keyword argument '%s'"%k)
             # remove the extra positional argument from the kwargs
             kwargs.pop(k,None)
-        parent = self.parent # hold a parent reference here
+
         output = self.fcall(*args, **kwargs)
         return output
 
@@ -2523,13 +2608,10 @@ class RecFunc(object):
         ################################################
         # All kwargs must be parsed
         ################################################
-        params = self.locals.copy()
-        if self.parentinstance:
-            for k,v in self.parentinstance.all.iteritems():
-                params.setdefault(k,v)
-        if self.parent:
-            for k,v in self.parent.all.iteritems():
-                params.setdefault(k,v)
+
+        params = self._history.all()
+        params.update(self.locals)
+
         if real:
             return params
         else:
@@ -2592,9 +2674,22 @@ class RecFunc(object):
         print()
         print (idt+"Curent Values : ")
         infos = self._get_value_info()
-        if infos:
-            print("\n".join([idt+INFMT.format(*inf) for inf in infos]))
-        else:
+        reordered = {}
+        for inf in infos:
+            li = len(inf[0])
+            if not li in reordered:
+                reordered[li] = []
+            reordered[li].append(inf)
+
+        keys = reordered.keys()
+        keys.sort()
+
+        for l in keys[::-1]:
+            for inf in reordered[l]:
+                print(idt+INFMT.format(*inf))
+
+
+        if not infos:
             print(idt+" "*4+"None")
         print()
 
@@ -2775,9 +2870,10 @@ class loop(_loopbase_):
         return  next(self.iterator)
 
 class alias(object):
-    def __init__(self, param, func=None):
+    def __init__(self, param, func=None, smalldoc=None):
         self.param = param
         self.func  = func
+        self.smalldoc = smalldoc
     def get(self, obj):
         if self.func:
             return self.func(obj,self.param)
@@ -2785,6 +2881,8 @@ class alias(object):
 
     def __str__(self):
         if self.func:
+            if self.smalldoc:
+                return "alias('%s', %s)"%(self.param, self.smalldoc)
             return "alias('%s', %s)"%(self.param, self.func)
         return "alias('%s')"%self.param
 
@@ -2799,8 +2897,9 @@ class alias(object):
 loopers = {LOOP:loop, LCYCLE:lcycle, CYCLE:cycle, FCYCLE:fcycle}
 
 def __test__():
-    global p0, P0, ip0, acumulator1
+    global p0, P0, ip0, acumulator1,acumulator2, Data, data
     acumulator1 = 0
+    acumulator2 = 0
     def test(num, shouldbe, valis):
         s = "{0:4.1f} {1:>8} == {2:<8}    {3}".format(num, shouldbe,  valis, shouldbe==valis)
         print(s)
@@ -2824,6 +2923,13 @@ def __test__():
             p001 = P001()
         p00 = P00()
         p00["fmt"] = "b+"
+
+    class Data(object):
+        a = 1
+        b = 2
+        p0 = P0()
+
+    data = Data()
 
     p0 = P0()
     p0["color"] = "red"
@@ -2878,16 +2984,18 @@ def __test__():
     def inc1():
         global acumulator1
         acumulator1 += 1
-    gc.enable()
     for i in range(1000):
         tc = P0()
         wr = weakref.ref(tc , lambda wr : inc1())
         _ = tc.p00
 
+    def inc2():
+        global acumulator2
+        acumulator2 += 1
+    for i in range(1000):
+        data = Data()
+        wr = weakref.ref(data , lambda wr : inc2())
+        _ = data.p0.p00
 
-    #_ = tc.p00
-    #del _
-    #del tc
-    gc.collect()
-    print(acumulator1)
-
+    print("1. on 999", acumulator1, "deleted correctly")
+    print("2. on 999", acumulator2, "deleted correctly")
