@@ -2,6 +2,9 @@
 
 This python package is a wrapper around the famous matplotlib package.
 
+**Note this is a early beta version (and a beta Readme). However the principle and skeleton will not change. If you find the package interesting, any contribution on anything is more than welcome.**
+
+
 ## Purpose
 The matplotlib package is huge and complete but in some case I often been frustrated with it. I often end up to write the same line of codes to plot a graphic slightly different than the one before, with other data.
 
@@ -270,18 +273,11 @@ for stat in xy.ydata.stat.iter(fstat=["+std","mean","-std"], linestyle=list(":-:
 xy.go("show", "draw")
 ```
 
-
 ## Installation
 TODO: Describe the installation process
 ## Usage
 TODO: Write usage instructions
 ## Contributing
-1. Fork it!
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request :D
-## History
 TODO: Write history
 ## Credits
 TODO: Write credits
