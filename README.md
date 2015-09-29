@@ -215,7 +215,9 @@ h = dp.histogram(bins=20, rwidth=0.8)
 h.bar()
 h.errorbar(linestyle="none", color="k")
 ```
+
 ![image](../screenshots/screenshots/histogram.png)
+
 A dataplot can be extracted form a xyplot with the ydata, xdata attribute, for instance:
 ```python
 xy = xyplot( np.random.normal(size=(1000,)), np.random.normal(size=(1000,)) )
