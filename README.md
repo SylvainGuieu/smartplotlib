@@ -197,6 +197,7 @@ xy.errorbar(linestyle="None", label="data")
 xy.polyfit(dim=2, color="red", linestyle="--", label=True).plot()
 xy.go("aset", "legend", "show", "draw")
 ```
+![image](../screenshots/screenshots/fitpoly.png)
 
 See the doc of plotfunc for a full list of PlotFactory and PlotFunc methods.
 
@@ -214,7 +215,7 @@ h = dp.histogram(bins=20, rwidth=0.8)
 h.bar()
 h.errorbar(linestyle="none", color="k")
 ```
-
+![image](../screenshots/screenshots/histogram.png)
 A dataplot can be extracted form a xyplot with the ydata, xdata attribute, for instance:
 ```python
 xy = xyplot( np.random.normal(size=(1000,)), np.random.normal(size=(1000,)) )
@@ -230,6 +231,7 @@ dp.stat(fstat="median").axvline(color="red")
 dp.distribfit(label=True).plot(color="k")
 dp.legend()
 ```
+![image](../screenshots/screenshots/histogram_fit.png)
 
 See the doc of dataplot for a list of PlotFunc and Plot Factories
 
@@ -273,6 +275,7 @@ for stat in xy.ydata.stat.iter(fstat=["+std","mean","-std"], linestyle=list(":-:
 
 xy.go("show", "draw")
 ```
+![image](../screenshots/screenshots/stat.png)
 
 ## Installation
 TODO: Describe the installation process
