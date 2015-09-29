@@ -493,7 +493,12 @@ def colorbar(*args, **kwargs):
     args = (mappable,)+args
     ax = kwargs.pop("ax", None)
     if ax is not None:
-        kwargs["ax"] = get_axes(ax, kwargs.get("figure",None))
+        # ax can be a list of figures
+        if hasattr(ax, "__iter__") and not isinstance(ax, tuple):
+            f = kwargs.get("figure",None)
+            kwargs["ax"] = [get_axes(a,f) for a in ax]
+        else:
+            kwargs["ax"] = get_axes(ax, kwargs.get("figure",None))
 
     return get_figure_kw(kwargs).colorbar(*args, **kwargs)
 
@@ -906,9 +911,29 @@ def _fill_step_process(x0,y0, bottom):
     return x, y
 
 
+linestyle_lookup = {
+    '-'  :  "solid",
+    '--' : "dashed",
+    '-.' :  "dashdot",
+    ':'  :  "dotted"
+}
+bad_linestyles = ['.',',','o','v','^','<','>','1','2','3','4',
+                   's','p','*','h','H','+','x','D','d','|','_'
+                 ]
 xymarker = sum((["x%d"%i,"Y%d"%i, "marker%d"%i] for i in range(1,10)), [])
 @patches.decorate(2,"x","y", "marker", *xymarker)
 def fill(*args, **kwargs):
+    if "linestyle" in kwargs:
+        # curiously matplotlib linestyle does not
+        # accept linetyle = ":", change it.
+        # if it is one of marker style remove it and
+        # leave it to default.
+        ls = kwargs.get("linestyle")
+        if ls in bad_linestyles:
+            kwargs.pop(linestyle)
+        else:
+            kwargs["linestyle"] = linestyle_lookup.get(ls,ls)
+
     for i in range(1,10):
         x,y,m = (kwargs.pop("x%d"%i,None),
                  kwargs.pop("y%d"%i,None),
@@ -916,7 +941,7 @@ def fill(*args, **kwargs):
         if (x,y,m) != (None,None,None):
             args+=(x,y,m)
     return get_axes_kw(kwargs).fill(*args, **kwargs)
-
+setpfdoc(fill, plt.Axes.fill.__doc__, "fill")
 
 fillstep = fill.derive(2, "x", "y", "marker", "bottom")
 @fillstep.caller
@@ -1386,6 +1411,7 @@ class _BaseFigAxes(object):
     draw = draw
     legend = legend
     grid = grid
+    savefig = savefig
     def get_axes(self):
         """ Return the matplotlib axes linked """
         return get_axes(self.get("axes", None), self.get("figure", None))

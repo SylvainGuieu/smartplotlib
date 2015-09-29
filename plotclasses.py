@@ -19,6 +19,74 @@ def _k2width(plot,k):
     """convert array plot[k] to bar width np.diff()"""
     return np.diff(plot[k])
 
+def _make_array(value):
+    if not isinstance(value, np.ndarray):
+        return np.asarray(value)
+    return value
+
+class _subxy(object):
+    def __init__(self, _xyplot=None):
+        self.xyplot = _xyplot
+
+    def __get__(self, xyplot, cl=None):
+        if xyplot is None:
+            return self
+        new = self.__class__(xyplot)
+        return new
+
+    def __getitem__(self, item):
+        xyplot = self.xyplot
+        try:
+            y = xyplot["y"]
+        except KeyError:
+            raise TypeError("missing y data, cannot extract sub-data")
+
+        y = _make_array(y)[item]
+        is_scalar = not hasattr(y, "__iter__")
+        if is_scalar:
+            new = scalarplot.derive(value=y)
+        else:
+            new = xyplot.derive(y=y)
+
+
+        try:
+            x = xyplot["x"]
+        except KeyError:
+            pass
+        else:
+            if x is not None:
+                if is_scalar:
+                    new["index"] = _make_array(x)[item]
+                else:
+                    new["x"] = _make_array(x)[item]
+
+        try:
+            xerr = xyplot["xerr"]
+        except KeyError:
+            pass
+        else:
+            if not is_scalar and (xerr is not None) and hasattr(xerr, "__iter__"):
+                new["xerr"] = _make_array(xerr)[item]
+
+        try:
+            yerr = xyplot["yerr"]
+        except KeyError:
+            pass
+        else:
+            if yerr is not None and hasattr(yerr, "__iter__"):
+                if is_scalar:
+                    new["err"] = _make_array(yerr)[item]
+                else:
+                    new["yerr"] = _make_array(yerr)[item]
+            elif yerr is not None:
+                new["yerr"] = _make_array(yerr)
+
+        return new
+
+    def __getslice__(self, start, end):
+        return self.__getitem__(slice(start, end))
+
+
 
 class XYPlot(PlotFactory, _BaseFigAxes):
     """ PlotFactory. Return a new instance of xyplot ready to plot 2d x/y data
@@ -135,6 +203,8 @@ class XYPlot(PlotFactory, _BaseFigAxes):
     See the doc of PlotFactory for other methods shared by PlotFactoty objects
 
     """
+    sub = _subxy()
+
     subplot = subplot
     plots = plots
 
@@ -191,6 +261,61 @@ class XYPlot(PlotFactory, _BaseFigAxes):
             if x is None:
                 x = alias("x", lambda p,k :np.arange(np.asarray(p["y"]).shape[0]))
         plot.update(x=x, y=y)
+
+
+
+
+class _subdata(object):
+    def __init__(self, _dataplot=None):
+        self.dataplot = _dataplot
+
+    def __get__(self, dataplot, cl=None):
+        if dataplot is None:
+            return self
+        new = self.__class__(dataplot)
+        return new
+
+    def __getitem__(self, item):
+        dataplot = self.dataplot
+        try:
+            data = dataplot["data"]
+        except KeyError:
+            raise TypeError("missing 'data', cannot extract sub-data")
+
+        data = _make_array(data)[item]
+        is_scalar = not hasattr(data, "__iter__")
+        if is_scalar:
+            new = scalarplot.derive(value=data)
+        else:
+            new = dataplot.derive(data=data)
+
+
+        try:
+            x = dataplot["indexes"]
+        except KeyError:
+            pass
+        else:
+            if is_scalar:
+                new["index"] = _make_array(x)[item]
+            else:
+                new["indexes"] = _make_array(x)[item]
+
+        try:
+            weights = dataplot["weights"]
+        except KeyError:
+            pass
+        else:
+            if not is_scalar and (weights is not None) and hasattr(weights, "__iter__"):
+                new["weights"] = _make_array(weights)[item]
+
+        return new
+
+    def __getslice__(self, start, end):
+        return self.__getitem__(slice(start, end))
+
+
+
+
 
 
 class DataPlot(PlotFactory, _BaseFigAxes):
@@ -261,6 +386,7 @@ class DataPlot(PlotFactory, _BaseFigAxes):
 {usefulattr}
 
     """
+    sub = _subdata()
     subplot = subplot
     plots = plots
     lines = pfs.lines
@@ -331,6 +457,37 @@ class XYZPlot(PlotFactory, _BaseFigAxes):
     colorbar = pfs.colorbar
 
 
+class _subimg(object):
+    def __init__(self, _imgplot=None):
+        self.imgplot = _imgplot
+
+    def __get__(self, imgplot, cl=None):
+        if imgplot is None:
+            return self
+
+        new = self.__class__(imgplot)
+        return new
+
+    def __getitem__(self, item):
+        imgplot = self.imgplot
+        try:
+            img = imgplot["img"]
+        except KeyError:
+            raise TypeError("'img' is not defined, cannot extract sub-image")
+
+        img = img[item]
+        if not hasattr(img, "__iter__"): # this is a scalar
+            return scalarplot(img)
+        if len(img.shape)<2: # this is a vector
+            return xyplot( np.arange(len(img)), img )
+        if self.imgplot:
+            return self.imgplot.derive(img=img)
+        return imgplot(img=img)
+
+    def __getslice__(self, start, end):
+        return self.__getitem__(slice(start, end))
+
+
 
 class ImgPlot(PlotFactory, _BaseFigAxes):
     """ plot used for image """
@@ -338,9 +495,10 @@ class ImgPlot(PlotFactory, _BaseFigAxes):
     plots = plots
 
     imshow = pfs.imshow
-    hist = pfs.hist.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten()))
+    hist = pfs.hist.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten(), "-> img.flatten()"))
     colorbar = pfs.colorbar
 
+    sub = _subimg()
     @staticmethod
     def finit(plot, img, **kwargs):
         plot.update(kwargs.pop(KWS,{}), **kwargs)
@@ -357,7 +515,7 @@ class ScalarPlot(PlotFactory, _BaseFigAxes):
     # here ymin and ymax has nothing to do with the data
     # change it to 0,1 by default
     axvline = pfs.axvline.derive(x=alias("value"),ymin=0,ymax=1)
-    axhline = pfs.axvline.derive(y=alias("value"),xmin=0,xmax=1)
+    axhline = pfs.axhline.derive(y=alias("value"),xmin=0,xmax=1)
 
     vlines = pfs.vlines.derive(x=alias("value", lambda p,k:np.asarray(p[k]), "-> array(value)"))
     hlines = pfs.vlines.derive(y=alias("value", lambda p,k:np.asarray(p[k]), "-> array(value)"))
@@ -373,9 +531,10 @@ class ScalarPlot(PlotFactory, _BaseFigAxes):
     annotate = pfs.annotate
 
     @staticmethod
-    def finit(plot,**kwargs):
+    def finit(plot, *args,  **kwargs):
         plot.update(kwargs.pop(KWS,{}), **kwargs)
-
+        value = plot.parseargs(args, "value")
+        plot["value"] = value
 
 conveniant = """
         |--------|-------------------------------------------------|
@@ -429,6 +588,9 @@ usefulattr = """
 """
 
 
+
+
+
 xyplot = XYPlot()
 xyplot.finit.__doc__ = XYPlot.__doc__.format(conveniant=conveniant,
                                              useful=useful, usefulattr=usefulattr
@@ -438,6 +600,7 @@ xyplot["_example_"] = ("xyplot", None)
 
 dataplot = DataPlot()
 dataplot["_example_"] = ("histogram", None)
+
 
 dataxyplot = DataXYPlot()
 xyzplot = XYZPlot()
