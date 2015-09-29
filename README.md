@@ -253,6 +253,8 @@ imgp.hist(axes=133)
 sub.hist(axes=133, color="green")
 imgp.go("show", "draw")
 ```
+[!ScreenShot]{https://github.com/SylvainGuieu/smartplotlib/blob/master/screenshots/imgplot.png}
+
 
 #### scalarplot
 Use to represent a scalar single value, for instance with axvline. For instance the stat plot factory is a scalarplot collection:
