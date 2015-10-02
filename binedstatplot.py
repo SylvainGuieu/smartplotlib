@@ -4,9 +4,9 @@ from . import plotfuncs as pfs
 from .recursive import KWS, alias
 from .base import PlotFactory
 import numpy as np
-from .plotclasses import (DataPlot, xyplot, XYPlot, DataXYPlot,
-                          dataxyplot
-                          )
+from .plotclasses import (DataPlot, dataplot, xyplot, XYPlot)
+
+
 
 from .histogram import _makebinedstatplot
 
@@ -103,7 +103,7 @@ def _statbin(x, values, fstat="mean", bins=10,
 
     return bins, stat, stat_err
 
-@dataxyplot.decorate(_example_=("binedstat",None))
+@xyplot.decorate(_example_=("binedstat",None))
 def binedstat(plot, *args,**kwargs):
     """ initiate a plot for y axis bined statistic
 

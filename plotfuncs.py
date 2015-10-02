@@ -12,8 +12,15 @@ __all__ = ["get_axes", "get_figure", "aset", "fset", "show", "fclear",
            "vlines", "axvline", "hlines", "axhline", "streamplot", "hist",
            "fill_between", "tables", "table", "texts", "text", "legend",
            "plot_axes_classes", "axhspan", "axvspan", "axspan", "bar", "step",
-           "annotate", "annotates", "eventplot", "loglog", "semilogx", "semilogy"
-           ]
+           "annotate", "annotates", "eventplot", "loglog", "semilogx", "semilogy",
+           'hexbin', 'savefig', 'stackplot', 'quadmeshes', 'contourf', 'clf', 'cla',
+           'collections', 'annotations', 'rectangle', 'plot_date', 'artist', 'bxp',
+           'boxplot', 'adjust', 'pcolormesh', 'arrow', 'axline', 'fancyarrows',
+           'line2d', 'contour', 'histx2y', 'histx2x', 'stem', 'patches', 'fill_betweeny',
+           'fill_betweenx', 'plotfunc', 'histy2x', 'histy2y', 'imshow', 'pcolor', 'contours',
+           'pie', 'linecollections', 'hist2d', 'colorbar', 'pcolorfast', 'polycollections',
+           'fillstep', 'matshow', 'polygon', 'fill']
+
 
 AXES_PARAMS = "axes_params"
 
@@ -520,6 +527,7 @@ def savefig(fname, *args, **kwargs):
         fname=name+version+ext
 
     return get_figure_kw(kwargs).savefig(fname, *args, **kwargs)
+setpfdoc(savefig, plt.Figure.savefig.__doc__, "savefig")
 
 
 ###############################################################
@@ -622,7 +630,7 @@ def step(*args, **kwargs):
     args, kwargs = _get_plot_args(args, kwargs)
     axes = get_axes_kw(kwargs)
     return axes.step(*args, **kwargs)
-
+setpfdoc(step, plt.Axes.step.__doc__, "step")
 
 
 @line2d.decorate(2, "xdates", "ydates", "fmt", "tz", "xdate", "ydate")
@@ -1026,7 +1034,7 @@ legend = plotfunc.derive(0, "loc", "bbox_to_anchor", "ncol", "prop", "fontsize",
 @legend.caller
 def legend(*args, **kwargs):
     return get_axes_kw(kwargs).legend(*args, **kwargs)
-setpfdoc(text, plt.Axes.legend.__doc__, "legend")
+setpfdoc(legend, plt.Axes.legend.__doc__, "legend")
 
 
 
@@ -1053,15 +1061,27 @@ polygon = plotfunc.derive('closed', 'xy', 'fill', 'fc', 'lw', 'ls', 'hatch', 'li
 @polygon.decorate(2, "xmin", "xmax", "ymin", "ymax")
 def axvspan(xmin, xmax, ymin=0, ymax=1,**kwargs):
     get_axes_kw(kwargs).axvspan(xmin, xmax, ymin, ymax, **kwargs)
+setpfdoc(axvspan, plt.Axes.axvspan.__doc__, "axvspan")
 
 @polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
 def axhspan(ymin, ymax, xmin=0, xmax=1,**kwargs):
     get_axes_kw(kwargs).axvspan(ymin, ymax, xmin, xmax, **kwargs)
+setpfdoc(axhspan, plt.Axes.axhspan.__doc__, "axhspan")
 
 @polygon.decorate(2, "ymin", "ymax", "xmin", "xmax")
 def axspan(value1, value2, axmin=0, axmax=1, **kwargs):
+    """ PlotFunc. This a nonymous version of axvspan/axhspan
 
+    the plot direction if handled by the 'direction' parameter.
+    if "y" -> axhspan if "x" -> axvspan.
 
+    Args:
+        value1 : first value in 'direction'
+        value2 : second value in 'direction'
+        axmin, axmax (Optional) : min and max in axes coordinate in the oposite
+            'direction'
+
+    """
     d =  kwargs.get("direction", "y")
     axes = get_axes_kw(kwargs)
     if d in ['y','Y',0]:

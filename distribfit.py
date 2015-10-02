@@ -1,7 +1,7 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from . import plotfuncs as pfs
-from .plotclasses import (XYPlot, DataPlot, DataXYPlot, xyplot, dataxyplot)
+from .plotclasses import (XYPlot, DataPlot,  xyplot, dataplot)
 
 from .recursive import KWS, alias
 from .base import PlotFactory
@@ -17,7 +17,7 @@ distrib_lookup = {
 }
 
 
-@dataxyplot.decorate()
+@xyplot.decorate()
 def distribfit(plot, *args, **kwargs):
     plot.update(kwargs.get(KWS, {}), **kwargs)
     (data, distrib, npoints, _range,
@@ -94,7 +94,6 @@ def distribfit(plot, *args, **kwargs):
     plot.goifgo()
 
 DataPlot.distribfit = distribfit
-DataXYPlot.distribfit = distribfit
 
 #XYPlot.distribfit = distribfit
 #XYPlot.ydistribfit2y = distribfit.derive(data=alias("y"), direction="y")

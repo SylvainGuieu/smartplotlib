@@ -144,9 +144,11 @@ class XYPlot(PlotFactory, _BaseFigAxes):
         |               | and height are x. align="center" by default                  |
         | bar2y         | plot bars verticaly edges are x[:-1], width are diff(x)      |
         |               | and height are y. align="center" by default                  |
+        | bar           | is bar2y                                                     |
         | annotates     | annotate x/y points                                          |
         | fill_betweeny | fill between y lines. Use 'y' bydefault for the first line   |
         | fill_betweenx | fill between x lines. Use 'x' bydefault for the first line   |
+        | fill_between  | is fill_betweeny                                             |
         | fillstep      | plot a polygone that envelop data if it was ploted with bars |
         |---------------|--------------------------------------------------------------|
 
@@ -236,12 +238,14 @@ class XYPlot(PlotFactory, _BaseFigAxes):
                             height=alias("x", _k2edge, "-> x[:-1]"),
                             align="center", direction="x"
                           )
+    bar = bar2y
 
     fillstep = pfs.fillstep
     fill = pfs.fill
 
     fill_betweeny = pfs.fill_betweeny.derive(y1=alias("y"))
     fill_betweenx = pfs.fill_betweenx.derive(x1=alias("x"))
+    fill_between = fill_betweeny
 
     annotates = pfs.annotates
 
@@ -357,8 +361,8 @@ class DataPlot(PlotFactory, _BaseFigAxes):
         |--------------------|------------|-------------------------------------------------|
         |       method       |  Factory   |                     comment                     |
         |--------------------|------------|-------------------------------------------------|
-        | histogram          | DataXYPlot | Histogram factory on *data*                     |
-        | binedstat          | DataXYPlot | binned statistic (mean, max, etc) on *data*     |
+        | histogram          | DataPlot   | Histogram factory on *data*                     |
+        | binedstat          | DataPlot   | binned statistic (mean, max, etc) on *data*     |
         | stat               | ScalarPlot | A scalar factory tha contain full data          |
         |                    |            | statistics.                                     |
         | distribfit         | XYPlot     | Fit the data distribution (e.g. with            |
@@ -402,43 +406,6 @@ class DataPlot(PlotFactory, _BaseFigAxes):
         data, = plot.parseargs([data], "data")
         plot["data"] = data
 
-
-
-class DataXYPlot(XYPlot, DataPlot):
-    """ PlotFactory containing capabilities of both DataPlot and XYPlot
-
-    See doc of both DataPlot and XYPlot for more info.
-
-    They are mostly used by histogram or binedstat like factory. Where one
-    wants to create a xyplot represantation of statistic (or histogram) but want
-    to re-use it to plot more stats, with the same bins, etc ....
-
-    see: print dataplot.histogram.example
-
-    Example:
-        >>> data = np.random.normal(size=(1000,))
-        >>> other_data = np.random.normal(scale=0.8, size=(1000,))
-        ### create a dataplot
-        >>> dp = dataplot( data )
-        ## h will be a dataxyplot
-        >>> h = db.histogram(data, rwidth=0.4)
-        >>> h.bar();
-
-        # plot other bars next to the first ones :
-        >>> h.histogram(other_data).bar()
-        # or stacked:
-        >>> h.histogram(other_data, stacked=True).bar()
-
-    See Doc of XYPlot and DataPLot factory for all methods
-    """
-    subplot = subplot
-    plots = plots
-    fill_between = pfs.fill_between
-    hist = pfs.hist
-    bar = pfs.bar
-    @staticmethod
-    def finit(plot,**kwargs):
-        plot.update(kwargs.pop(KWS,{}), **kwargs)
 
 
 def colors_or_z(p,k):
@@ -602,7 +569,6 @@ dataplot = DataPlot()
 dataplot["_example_"] = ("histogram", None)
 
 
-dataxyplot = DataXYPlot()
 xyzplot = XYZPlot()
 imgplot = ImgPlot()
 scalarplot = ScalarPlot()

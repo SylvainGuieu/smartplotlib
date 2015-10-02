@@ -1,7 +1,7 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from . import plotfuncs as pfs
-from .plotclasses import (XYPlot, xyplot, DataXYPlot)
+from .plotclasses import (XYPlot, xyplot)
 
 from .recursive import KWS, alias
 from .base import PlotFactory
@@ -176,8 +176,6 @@ linearfit = PolyFit(dim=1, npoints=2, _example_=("polyfit", None))
 # add instances to _XYPlot
 XYPlot.linearfit = linearfit
 XYPlot.polyfit = polyfit
-DataXYPlot.linearfit = linearfit
-DataXYPlot.polyfit = polyfit
 
 
 #################################################################

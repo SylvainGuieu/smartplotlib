@@ -3,7 +3,7 @@ from .recursive import KWS, alias
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 
-from .plotclasses import (DataPlot, DataXYPlot, dataxyplot, XYPlot,
+from .plotclasses import (DataPlot, dataplot, XYPlot, xyplot,
                           ImgPlot, XYZPlot, xyzplot
                          )
 
@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.cbook as cbook
 import six
 
-histogram = dataxyplot.derive()
+histogram = xyplot.derive()
 
 def _statbin(x, values, fstat="mean", bins=10,
              range=None, binerror=False,
@@ -290,7 +290,6 @@ def histogram2d(plot, *args, **kwargs):
 histogram["_example_"] = ("histogram", None)
 
 DataPlot.histogram = histogram
-DataXYPlot.histogram = histogram
 ImgPlot.histogram = histogram.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten()))
 XYZPlot.histogram = histogram.derive(data=alias("z", lambda p,k: np.asarray(p[k]).flatten()))
 

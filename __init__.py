@@ -21,9 +21,9 @@ from .img2data import img2data
 from .specgram import (specgram, magnitude_spectrum, angle_spectrum,
                        phase_spectrum, cohere)
 
-from plotclasses import (XYPlot, DataPlot, DataXYPlot, ImgPlot,
+from plotclasses import (XYPlot, DataPlot, ImgPlot,
                          XYZPlot, ScalarPlot,
-                         xyplot, dataplot, dataxyplot, imgplot,
+                         xyplot, dataplot, imgplot,
                          xyzplot, scalarplot
                         )
 
@@ -74,9 +74,7 @@ Plots.xyplot = xyplot
 XYPlot.xdata = dataplot.derive(data=alias("x"), indexes=alias("y",lambda p,k:p.get(k,None)))
 XYPlot.ydata = dataplot.derive(data=alias("y"), indexes=alias("x",lambda p,k:p.get(k,None)))
 
-DataXYPlot.xdata = dataplot.derive(data=alias("x"))
-DataXYPlot.ydata = dataplot.derive(data=alias("y"))
-DataXYPlot.data = dataplot
+
 
 
 

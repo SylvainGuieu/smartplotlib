@@ -373,11 +373,8 @@ def histogram():
     # make a second histogram on the same figure
     # calling histogram again assure that the same bins are used for
     # both, because they are now set in h1 as an array
-    h1.histogram(data2, stacked=True, color="green", label="more data").bar()
+    h1(data2, stacked=True, color="green", label="more data").bar()
     h1.legend()
-
-
-
 
 
     h2 = h(density=True,
@@ -388,7 +385,7 @@ def histogram():
     ##
     # fit the distribution an plot
     # label=True will generate a label with fit result
-    fit = h2.distribfit(label=True)
+    fit = dp.distribfit(label=True)
     fit.plot(); fit.derive(min=-fit["scale"]+fit["loc"],
                            max=+fit["scale"]+fit["loc"],
                            label=None,
@@ -396,7 +393,7 @@ def histogram():
                            ).plot()
 
 
-    for s in h2.stat.iter(fstat=["-std","+std"]):
+    for s in dp.stat.iter(fstat=["-std","+std"]):
         s().axvline(color="red", linestyle=":")
 
 
@@ -417,7 +414,7 @@ def histogram():
     ####
     # make a opposite histogram, since stacked is false one must
     # put the counter to 0
-    h3.histogram(data2, stacked=False, count=0, amplitude=-1, color="green").bar()
+    h3(data2, stacked=False, count=0, amplitude=-1, color="green").bar()
 
 
 
@@ -434,7 +431,7 @@ def histogram():
     ####
     # make a opposite histogram, since stacked is false one must
     # put the counter to 0
-    h4.histogram(data2, stacked=False, color="green").bar()
+    h4(data2, stacked=False, color="green").bar()
 
     h4.go("show", "draw")
 

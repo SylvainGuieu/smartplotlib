@@ -4,9 +4,9 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-from .plotclasses import (imgplot, XYPlot, xyplot, DataPlot, DataXYPlot,
-                          dataxyplot
-                          )
+from .plotclasses import (imgplot, XYPlot, xyplot, DataPlot, dataplot)
+
+
 
 import numpy as np
 
@@ -110,7 +110,7 @@ specgram.finit.__doc__ = specgram.finit.__doc__ + plt.Axes.specgram.__doc__
 specgram.__doc__ = specgram.finit.__doc__
 
 
-_spectrum = dataxyplot.derive()
+_spectrum = dataplot.derive()
 
 @_spectrum.decorate(_example_=("spectrum",None))
 def magnitude_spectrum(plot,*args, **kwargs):
@@ -527,12 +527,10 @@ def cohere(plot, *args, **kwargs):
 
 
 DataPlot.specgram = specgram
-DataXYPlot.specgram = specgram
 XYPlot.xspecgram = specgram.derive(data=alias("x"))
 XYPlot.yspecgram = specgram.derive(data=alias("y"))
 
 DataPlot.magnitude_spectrum = magnitude_spectrum
-DataXYPlot.magnitude_spectrum = magnitude_spectrum
 
 
 XYPlot.xmagnitude_spectrum = magnitude_spectrum.derive(data=alias("x"))
@@ -540,19 +538,17 @@ XYPlot.ymagnitude_spectrum = magnitude_spectrum.derive(data=alias("y"))
 
 
 DataPlot.angle_spectrum = angle_spectrum
-DataXYPlot.angle_spectrum = angle_spectrum
+
 
 XYPlot.xangle_spectrum = angle_spectrum.derive(data=alias("x"))
 XYPlot.yangle_spectrum = angle_spectrum.derive(data=alias("y"))
 
 DataPlot.phase_spectrum   = phase_spectrum
-DataXYPlot.phase_spectrum = phase_spectrum
 XYPlot.xphase_spectrum = phase_spectrum.derive(data=alias("x"))
 XYPlot.yphase_spectrum = phase_spectrum.derive(data=alias("y"))
 
 
 DataPlot.psd   = psd
-DataXYPlot.psd = psd
 XYPlot.xpsd = psd.derive(data=alias("x"))
 XYPlot.ypsd = psd.derive(data=alias("y"))
 

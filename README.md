@@ -123,7 +123,7 @@ We have defined parabola which is a new instance of a xyplot with some parameter
 ```
 
 Let see an simple example on how to create a plotfactory easily. Imagine you have to plot often a sinus on your graphs, you can of course make a normal function and parse all the keywords to your function with all the different case of plotting, or, you can use a plot factory. As the sinus is a 2d data x/y kind of plot, one can start from the xyplot.
-Each PlotFactory, PlotCollection, PlotFunc has a attribute 'derive' to create a derived instance or an attribute 'decorate' to decorate the engine function (the engine function is called finit in case of PlotFactory and fcall in case of PlotFunc).
+Each PlotFactory, PlotCollection, PlotFunc has a attribute 'derive' to create a derived instance, and an attribute 'decorate' to decorate the engine function (the engine function is called finit in case of PlotFactory and fcall in case of PlotFunc).
 
 A plot factory function maker receive always a fresh new plot
 instance and must return None (as \_\_init\_\_ for classes)
@@ -146,7 +146,7 @@ def psinus(plot, freq=1.0, phase=0.0, nperiod=1, npoints=50, **kwargs):
 # put some default, for instance,  here in the fill method
 psinus.fill.update(linewidth=None, linestyle="solid")
 ```
-Then you can use you psinus and plot what you need from it:
+Then you can use your psinus and plot what you need from it:
 ```python
 >>> psinus(2.0, 0.0, 3).plot(color="red") # a line plot
 # or
@@ -161,6 +161,7 @@ A useful method is the '.info', it prints a state of the object with all the val
 ```python
 >>> psinus.info
 >>> psinus().info
+>>> psinus().plot.info
 ```
 
 The go method is just a short cut : psinus(4.0).go("aset", "plot") is equivalent to do : p = psinus(4.0); p.aset(); p.plot()
@@ -203,7 +204,7 @@ See the doc of plotfunc for a full list of PlotFactory and PlotFunc methods.
 
 #### dataplot
 
-dataplot is a collection of PlotFunc and PlotFactory to represent one dimensional data (materialized by the parameter 'data'). For instance it has the hist PlotFunc wrapped around the hist matplotlib function  but also a PlotFactory histogram which serve the same purpose but is more handy to represent computed histogram as we want. histogram, return a xyplot collection.
+dataplot is a collection of PlotFunc and PlotFactory to represent one dimensional data (materialized by the parameter 'data'). It has the 'hist' PlotFunc wrapped around the hist matplotlib function, but has also a PlotFactory histogram which serve the same purpose, but is more handy for advanced  representation of histograms with little extra line code. histogram, return a xyplot collection.
 ```python
 import numpy as np
 from smartplotlib import dataplot
