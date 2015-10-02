@@ -4,12 +4,14 @@ from .recursive import RecObject, RecFunc
 from .stack import stack
 import inspect
 
+
 class PlotFactory(RecObject):
-    _unlinked = tuple()#("go","_go_results")
-    _default_params = {"go":None, "_go_results":None, "_example_":None}
+    _unlinked = tuple() # ("go","_go_results")
+    _default_params = {"go": None, "_go_results": None, "_example_": None}
     _example = None
+
     def goifgo(self):
-        go = self.get("go",False)
+        go = self.get("go", False)
         if go:
             if go is True:
                 self["_go_results"] = self.go("-")
@@ -21,7 +23,7 @@ class PlotFactory(RecObject):
             return
 
     def _get_direction(self):
-        d = self.get("direction","y")
+        d = self.get("direction", "y")
         if d in ["y", "Y", 0]:
             return "x", "y"
         if d in ["x", "X", 1]:
@@ -35,14 +37,14 @@ class PlotFactory(RecObject):
             return get_example(*ex)
 
     def __add__(self, right):
-        if not isinstance( right, (PlotFactory,PlotFunc,stack)):
+        if not isinstance( right, (PlotFactory, PlotFunc, stack)):
             raise TypeError("can add a plot only to a plot, plotfunc or stack (not '%s') "%(type(right)))
         return stack([self, right])
 
     def iteraxes(self, _ncol_, _nrow_=None, _n_=None, **kwargs):
         if _nrow_ is None:
             n = _ncol_
-            axes = [(_ncol_,i) for i in range(1,n+1)]
+            axes = [(_ncol_,i) for i in range(1, n+1)]
         else:
             n = _nrow_*_ncol_ if _n_ is None else _n_
             axes = [(_ncol_, _nrow_, i) for i in range(1,n+1)]
@@ -54,8 +56,6 @@ class PlotFactory(RecObject):
         figs = list(range(*args))
         kwargs.setdefault("figure", figs)
         return self.iter(len(figs), **kwargs)
-
-
 
 
 class PlotFunc(RecFunc):
