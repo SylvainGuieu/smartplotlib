@@ -739,32 +739,24 @@ def recfunc(*args, **kwargs):
 
 class _History_(object):
     """ a class to record parameter history path """
-    def __init__(self, i, p, data=None):
+    def __init__(self, i, p):
         """ i are instances p are parents """
         self.i_params, self.i = i
         self.p_params, self.p = p
-        self.data = data
+
 
 
     def copy(self, deep=False):
         if deep:
             new = _History_((self.i_params.copy(), self.i.copy() if self.i else None),
-                            (self.p_params.copy(), self.p.copy() if self.p else None),
-                            self.data
+                            (self.p_params.copy(), self.p.copy() if self.p else None)                            
                             )
         else:
             new = _History_((self.i_params, self.i.copy() if self.i else None),
-                            (self.p_params, self.p.copy() if self.p else None),
-                            self.data
+                            (self.p_params, self.p.copy() if self.p else None)
                             )
         return new
 
-    def getdata(self):
-        if self.data:
-            return data
-        if self.p:
-            return self.p.getdata()
-        return None
 
     def all(self):
         params = self.i_params.copy()
@@ -881,15 +873,14 @@ class _History_(object):
 
 class _RecObject_Instanced(object):
     _derived_cl = True
-    def __init__(self, ids, i, p, new=False, data=None):
+    def __init__(self, ids, i, p, new=False):
         if new:
             self._params  = {}
-        ih, ph, pdata = None, None, None
+        ih, ph= None, None
         if i:
             ih = i._history
         if p:
-            ph = p._history
-            pdata = ph.data
+            ph = p._history            
 
         ip = i._params if i else {}
         pp = p._params if p else {}
@@ -903,10 +894,10 @@ class _RecObject_Instanced(object):
 
 
         self._history = _History_( (ip, ih),
-                                    (pp, ph), pdata )
+                                    (pp, ph) )
 
         self.ids = ids or newid(self)
-        self._data = data
+        
         if self.finit and self.finit.__doc__:
             self.__doc__ = self.finit.__doc__
 
@@ -1174,7 +1165,7 @@ class RecObject(object):
     """ _default_params are always set localy they can be copied from an
     instance but never from a parent. """
     _stopped = False
-    _data = None
+    
     def __init__(self, _init_=None, **params):
 
         if _init_ is not None:
@@ -1586,9 +1577,9 @@ class RecObject(object):
     def _derive(self, parent):
 
         if self._derived_cl:
-            new = self.__class__(None, self, parent, True, self.data)
+            new = self.__class__(None, self, parent, True)
         else:
-            new = self._derive_cl()(None,self, parent, True, self.data)
+            new = self._derive_cl()(None,self, parent, True)
 
         new.finit = self.finit
 
@@ -1657,7 +1648,9 @@ class RecObject(object):
 
             if not (self.ids in data.__recobjects__):
                 data.__recobjects__[self.ids] = self._derive_cl()
-            return data.__recobjects__[self.ids](self.ids, self, None, False, data)
+            new = data.__recobjects__[self.ids](self.ids, self, None, False)
+            new.data = data
+            return new
 
     def get_data(self, data=None):
         """ If the curent object as a data attached return it
@@ -1707,7 +1700,7 @@ class RecObject(object):
         obj.set_data(data)
         obj.data is data
         """
-        self._data = data
+        self["__data__"] = data
 
 
     @property
@@ -1721,21 +1714,26 @@ class RecObject(object):
 
 
         """
-        if self._data:
-            return self._data
+        return self.get("__data__", None)
 
-        return self._history.getdata()
+    @data.setter
+    def data(self, data):
+        self.set_data(data)    
 
     @property
     def hasdata(self):
         """ True if has data and data is not deleted (dead) """
-        return self._data and (self._data() is not None)
+        try:
+            self["__data__"]
+        except:
+            return False
+        else:
+            return True    
 
-
-    def __get__(self, data, cl=None):
-        if data is None:
+    def __get__(self, data_or_recobject, cl=None):
+        if data_or_recobject is None:
             return self
-        return self._new_instance(data)
+        return self._new_instance(data_or_recobject)
 
     # def __getattr__(self, attr):
     #     """ allow to return a linked RecObject instance
