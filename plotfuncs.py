@@ -1,13 +1,14 @@
 from __future__ import division, absolute_import, print_function
 
-from .base import PlotFunc
+from .base import PlotFunc, PlotFactory
 from .recursive import popargs, KWS, extract_args, alias
 
 import matplotlib.pyplot as plt
+from matplotlib.axis import Axis as pltAxis
 import numpy as np
 import os # for savefig
 
-__all__ = ["get_axes", "get_figure", "aset", "fset", "show", "fclear",
+__all__ = ["get_axes", "get_figure", "axes", "fset", "show", "fclear",
            "draw", "aclear", "grid", "plot", "lines", "errorbar", "scatter",
            "vlines", "axvline", "hlines", "axhline", "streamplot", "hist",
            "fill_between", "tables", "table", "texts", "text", "legend",
@@ -283,7 +284,7 @@ def get_figure(fig, axes=None):
 
         if isinstance(tpl[0], basestring):
             name, fig = tpl
-            fig = figure(name)
+            fig = plt.figure(name)
         else:
             fig = get_figure(None, axes)
 
@@ -298,6 +299,16 @@ def get_figure(fig, axes=None):
 
     return plt.figure(fig)
 
+def get_axis(axis="x", axes=None, figure=None):
+    if isinstance(axis, pltAxis):
+        return axis
+    axes = get_axes(axes, figure)
+    if axis in ["X", "x", "horizontal", 0]:
+            return axes.xaxis
+    if axis in ["Y", "y", "vertical" , 1]:
+            return axes.yaxis
+    raise TypeError("wrong axis parameter should be Axis instance, 'x' or 'y' got '%s'"%axis)
+
 def get_axes_kw(kwargs):
     return get_axes(kwargs.pop("axes", None),
                     kwargs.pop("figure",None),
@@ -306,6 +317,17 @@ def get_axes_kw(kwargs):
 
 def get_figure_kw(kwargs):
     return get_figure(kwargs.pop("figure", None), kwargs.get("axes",None))
+
+
+def get_axis_kw(kwargs):
+    return get_axis(kwargs.pop("axis", None),
+                    kwargs.pop("axes", None),
+                    kwargs.pop("figure",None))
+
+def get_axis_kw2(axis, kwargs):
+    return get_axis(axis,
+                    kwargs.pop("axes", None),
+                    kwargs.pop("figure",None))
 
 
 
@@ -331,9 +353,12 @@ def update_form_rcparams(pf, name):
 
 # Some keyword are not the same than in the plt.axes function
 # than in the Axes.set_something , e.g. axisbg is axis_bgcolor
-axes_short_kws = dict(axisbg="axis_bgcolor",frameon="frame_on")
+axes_short_kws = dict(axisbg="axis_bgcolor",
+                      bgcolor="axis_bgcolor",
+                      facecolor="axis_bgcolor",
+                      frameon="frame_on")
 
-aset = plotfunc.duplicate('figure', 'axes', "sharex", "sharey",
+axes = plotfunc.duplicate('figure', 'axes', "sharex", "sharey",
         'picker', 'adjustable', 'cursor_props', 'yscale', 'navigate', 'clip_box',
         'transform', 'xscale', 'aspect', 'axis_bgcolor', 'ylim', 'clip_on', 'xlim',
         'axis_on', 'title', 'contains', 'clip_path', 'axis_off', 'xticks', 'ylabel',
@@ -342,80 +367,143 @@ aset = plotfunc.duplicate('figure', 'axes', "sharex", "sharey",
         'autoscale_on', 'alpha', 'ybound', 'yticklabels', 'rasterized', 'xmargin',
         'path_effects', 'sketch_params', 'color_cycle', 'lod', 'zorder', 'xbound',
         'yticks', 'ymargin', 'position', 'animated', 'anchor', 'xticklabels',
-        'axisgb', 'frameon', 'axis'
+        'axis', *(axes_short_kws.keys())
         )
 
-@aset.caller
-def aset(axes=None, figure=None, sharex=None, sharey=None, **kwargs):
+@axes.caller
+def axes(axes=None, figure=None, sharex=None, sharey=None, **kwargs):
     name = kwargs.pop("name", None)
-
     axes = get_axes(axes, figure, colect_axes_kwargs(kwargs))
-    if sharey not in [None, False]:
-        sharey = get_axes(sharey, figure)
-        if sharey is not axes:
-            axes._shared_y_axes.join(axes, sharey)
-            if sharey._adjustable == 'box':
-                sharey._adjustable = 'datalim'
-            #warnings.warn(
-            #    'shared axes: "adjustable" is being changed to "datalim"')
-            axes._adjustable = 'datalim'
-
-    if sharex not in [None, False]:
-        sharex = get_axes(sharex, figure)
-        if sharex is not axes:
-            axes._shared_x_axes.join(axes, sharex)
-            if sharex._adjustable == 'box':
-                sharex._adjustable = 'datalim'
-            #warnings.warn(
-            #    'shared axes: "adjustable" is being changed to "datalim"')
-            axes._adjustable = 'datalim'
 
     if name:
         axes.id = name
+    for short, real in axes_short_kws.iteritems():
+        if short in kwargs:
+            kwargs.setdefault(real,kwargs.pop(short))
 
-    for kshort, kreal in axes_short_kws.iteritems():
-        if kshort in kwargs:
-            kwargs[kreal] = kwargs.pop(kshort)
-
-    axis = kwargs.pop("axis", None)
-
-    if len(kwargs):
-        axes.set(**kwargs)
-
-    if axis:
-        axes.axis(axis)
-
+    axes.set(**kwargs)
     return axes
-setpfdoc(aset, plt.Axes.set.__doc__, "set")
+setpfdoc(axes, plt.Axes.set.__doc__, "set")
+
+
+axes2 = plotfunc.duplicate('figure', 'axes',
+        'picker', 'adjustable', 'cursor_props',  'navigate', 'clip_box',
+        'transform', 'aspect', 'axis_bgcolor', 'ylim', 'clip_on', 'xlim',
+        'axis_on', 'title', 'contains', 'clip_path', 'axis_off', 'xticks', 'ylabel',
+        'autoscalex_on', 'xlabel', 'rasterization_zorder', 'axes_locator', 'subplotspec',
+        'agg_filter', 'axisbelow', 'frame_on', 'navigate_mode', 'snap', 'autoscaley_on',
+        'autoscale_on', 'alpha', 'ybound', 'yticklabels', 'rasterized', 'xmargin',
+        'path_effects', 'sketch_params', 'color_cycle', 'lod', 'zorder', 'xbound',
+        'yticks', 'ymargin', 'position', 'animated', 'anchor', 'xticklabels',
+        'axis', *(axes_short_kws.keys())
+        )
 
 
 
-fset = plotfunc.duplicate('figure', 'axes',
+
+###
+# plotfunc to set axis
+_axis = plotfunc.duplicate(
+    'view_interval', 'default_intervals', 'ticks_position', 'label_position', 'data_interval',
+    'tick_params', 'units', 'label_coords', 'scale', 'smart_bounds', 'major_locator',
+    'minor_formatter', 'major_formatter', 'minor_locator', 'label_text', 'ticks',
+    'pickradius', 'clip_path', 'ticklabels', 'clip_on', 'contains', 'label', 'animated',
+    'axes', 'sketch_params', 'lod', 'snap', 'figure', 'transform', 'alpha', 'rasterized',
+    'path_effects', 'agg_filter', 'zorder', 'clip_box', 'picker', 'visible', 'url',
+    'gid'
+    )
+
+@_axis.decorate(1,"axis", axis="both")
+def axis(axis,  **kwargs):
+    """ Set default parameters to x, y or both axis """
+    axes = kwargs.pop("axes", None)
+    figure = kwargs.pop("figure", None)
+    if axis in ["both"]:
+        axes = get_axes(axes, figure)
+        axes.xaxis.set(**kwargs)
+        axes.yaxis.set(**kwargs)
+        return
+    get_axis(axis, axes, figure).set(**kwargs)
+
+xaxis = _axis.derive(axis="x")
+setpfdoc(xaxis, "Set parameters to the xaxis", "xaxis")
+yaxis = _axis.derive(axis="y")
+setpfdoc(yaxis, "Set any parameters to the yaxis", "yaxis")
+
+tick = plotfunc.duplicate(
+                           "axis", "reset", "which", "direction", "length", "width",
+                           "color", "pad", "labelsize", "labelcolor", "colors", "zorder",
+                           "bottom", "top", "left", "right",
+                           "labelbottom","labeltop","labelleft","labelright"
+                           )
+@tick.caller
+def tick(**kwargs):
+    axes = get_axes_kw(kwargs)
+    return axes.tick_params(**kwargs)
+setpfdoc(tick, plt.Axes.tick_params.__doc__, "tick")
+
+
+spine = plotfunc.duplicate(1, 'where',
+    'bounds', 'patch_circle', 'position', 'patch_line', 'smart_bounds', 'color',
+    'fill', 'fc', 'lw', 'ls', 'hatch', 'linewidth', 'antialiased', 'aa', 'facecolor',
+    'edgecolor', 'joinstyle', 'linestyle', 'alpha', 'ec', 'capstyle', 'clip_on',
+    'contains', 'label', 'animated', 'axes', 'sketch_params', 'lod', 'snap', 'figure',
+    'transform', 'rasterized', 'path_effects', 'agg_filter', 'zorder', 'clip_box',
+    'picker', 'clip_path', 'visible', 'url', 'gid'
+                           )
+@spine.caller
+def spine(where=["top", "bottom", "left", "right"],
+          *args, **kwargs):
+    axes = get_axes_kw(kwargs)
+    if isinstance (where, basestring):
+        s = axes.spines[where]
+        s.set(*args, **kwargs)
+        return s
+    else:
+        output = []
+        for w in where:
+            s = axes.spines[w]
+            s.set(*args, **kwargs)
+            output.append(s)
+        return output
+
+
+figure_short_kws = dict(size='size_inches',
+                        bgcolor='facecolor',
+                        figure_bgcolor='facecolor'
+                        )
+figure = plotfunc.duplicate('figure', 'axes',
         'picker', 'edgecolor', 'clip_on', 'clip_box', 'transform',
         'canvas', 'facecolor', 'lod', 'size_inches', 'contains', 'clip_path', 'figwidth',
         'snap', 'agg_filter', 'figheight', 'alpha', 'tight_layout', 'rasterized',
         'path_effects', 'sketch_params', 'frameon', 'zorder', 'animated', 'dpi',
-        "sp_left", "sp_bottom", "sp_right", "sp_top", "sp_wspace", "sp_hspace",
-        "wspace", "hspace", "suptitle"
+        *(figure_short_kws.keys())
+        #"sp_left", "sp_bottom", "sp_right", "sp_top", "sp_wspace", "sp_hspace",
+        #"wspace", "hspace",
         )
 
-@fset.caller
-def fset(figure=None, axes=None, sp_left=None, sp_bottom=None, sp_right=None, sp_top=None,
-         sp_wspace=None, sp_hspace=None, wspace=None, hspace=None, suptitle=None, **kwargs):
+
+@figure.caller
+def figure(figure=None, axes=None, **kwargs):
     fig = get_figure(figure, axes)
 
-    if suptitle:
-        fig.suptitle(suptitle)
+    for short, real in figure_short_kws.iteritems():
+        if short in kwargs:
+            kwargs.setdefault(real,kwargs.pop(short))
 
     if len(kwargs):
         fig.set(**kwargs)
-    fig.subplots_adjust(left=sp_left, bottom=sp_bottom, right=sp_right, top=sp_top,
-                        wspace=wspace if sp_wspace is None else sp_wspace,
-                        hspace=hspace if sp_hspace is None else sp_hspace
-                        )
 
     return fig
-setpfdoc(fset, plt.Figure.set.__doc__, "fset")
+setpfdoc(figure, plt.Figure.set.__doc__, "figure")
+_fset = figure
+
+suptitle = plotfunc.duplicate(1, 'suptitle',('x',"__"),('y',"__"),'horizontalalignment', 'verticalalignment')
+@suptitle.caller
+def suptitle(*args,  **kwargs):
+    fig = get_figure(kwargs.pop("figure",None),kwargs.pop("axes",None) )
+    return fig.suptitle(*args,**kwargs)
+
 
 @plotfunc.decorate("left", "bottom", "right", "top", "wspace", "hspace")
 def adjust(left=None, bottom=None, right=None, top=None,
@@ -458,6 +546,21 @@ def draw(figure=None, axes=None):
     """
     return get_figure(figure, axes).canvas.draw()
 
+
+@plotfunc.decorate(0, "scale", "base", "subs", "nonpos", "linthresh", "linscale", "axis")
+def scale(scale="linear", **kwargs):
+    axis = kwargs.pop("axis", "both")
+    axes = get_axes_kw(kwargs)
+
+    args = "base", "subs", "nonpos", "linthresh", "linscale"
+    if axis in ("X","x",0,"both",None):
+        d = {k+"x":kwargs[k] for k in args if k in kwargs}
+        axes.set_xscale(scale, **d)
+    if axis in ("Y","y",1,"both",None):
+        d = {k+"y":kwargs[k] for k in args if k in kwargs}
+        axes.set_yscale(scale, **d)
+
+
 @plotfunc.decorate()
 def aclear(axes=None, figure=None):
     """ clear the axes
@@ -469,10 +572,7 @@ def aclear(axes=None, figure=None):
     return get_axes(axes, figure).clear()
 cla = aclear
 
-@plotfunc.decorate("b", "which", "axis")
-def grid(*args, **kwargs):
-    return get_axes_kw(kwargs).grid(*args, **kwargs)
-setpfdoc(grid, plt.Axes.grid.__doc__, "grid")
+
 
 
 colorbar = plotfunc.derive(0,
@@ -514,19 +614,45 @@ savefig = plotfunc.derive(1,
            "fname", "dpi", "facecolor", "edgecolor",
            "orientation", "papertype", "format",
            "transparent", "bbox_inches", "pad_inches",
-           "frameon", "version"
+           "frameon", "version", "directory", "extention", 
+           "verbose", "indexfile", "disabled"
           )
 @savefig.caller
 def savefig(fname, *args, **kwargs):
-    version = kwargs.pop("version", None)
+    if  kwargs.pop("disabled", False):
+        return ''
+
+    version   = kwargs.pop("version", None)
+    directory = kwargs.pop("directory", None)
+    extention = kwargs.pop("extention", None)
+    verbose   = kwargs.pop("verbose", False)
+    index = kwargs.pop("indexfile",None)
+
 
     if not isinstance(fname, basestring):
         raise ValueError("fname must be a string got a '%s'"%type(fname))
-    if version is not None:
-        name, ext = os.path.splitext(fname)
-        fname=name+version+ext
+    direc, fname = os.path.split(fname)
+    if not direc and directory:
+        direc = directory
 
-    return get_figure_kw(kwargs).savefig(fname, *args, **kwargs)
+    name, ext = os.path.splitext(fname)
+    ext.lstrip('.')
+    if not ext in ['eps', 'jpeg', 'jpg', 'pdf', 'pgf', 'png', 'ps', 'raw', 'rgba', 'svg', 'svgz', 'tif', 'tiff']:
+        if extention:
+            ext = extention.lstrip(".")
+        else:
+            name += "."+ext # not a figure extention, put it back to name
+            ext = None
+
+    fname = os.path.join(direc, name+(version if version is not None else '')+("."+ext if ext else ''))   
+
+    out = get_figure_kw(kwargs).savefig(fname, *args, **kwargs)
+    if verbose:
+        print("Figure saved at '%s'"%fname)
+
+    if index:
+        index.write("%s\n"%fname)    
+    return out            
 setpfdoc(savefig, plt.Figure.savefig.__doc__, "savefig")
 
 
@@ -545,6 +671,15 @@ line2d = plotfunc.duplicate('marker',
         'label', 'xydata', 'ms', 'pickradius', 'window_extent'
         )
 setpfdoc(line2d, plt.Line2D.__doc__+"\n\n"+plt.Line2D.__init__.__doc__, "line2d")
+
+@line2d.decorate(("state","grid"), "which", "axis")
+def grid(state=None,  **kwargs):
+    if state==None and not len(kwargs):
+        state = False
+    return get_axes_kw(kwargs).grid(state,   **kwargs)
+setpfdoc(grid, plt.Axes.grid.__doc__, "grid")
+
+
 
 ##
 # number of keyword triplet xi, yi, fmti accepted. where i included in range(1,Ntriplet+1)
@@ -659,6 +794,8 @@ def semilogy(*args, **kwargs):
     axes = get_axes_kw(kwargs)
     return axes.semilogy(*args, **kwargs)
 setpfdoc(semilogy, plt.Axes.semilogy.__doc__, "semilogy")
+
+
 
 @plotfunc.decorate(0, "x", "y", "linefmt", "markerfmt", "basefmt", "bottom", 'label')
 def stem(*args, **kwargs):
@@ -1009,7 +1146,7 @@ texts = plotfunc.duplicate(
         'clip_box', 'clip_path', 'visible', 'verticalalignment', 'fontstretch', 'font_properties',
         'size', 'fontname', 'weight', 'linespacing', 'stretch', 'contains', 'transform',
         'label', 'fontvariant', 'fontproperties', 'gid', 'horizontalalignment', 'snap',
-        'family', 'agg_filter', 'fontsize', 'variant', 'style', 'multialignment',
+        'family', 'agg_filter', 'fontsize', 'variant', 'textstyle', 'multialignment',
         'axes', 'backgroundcolor', 'alpha', 'rotation', 'ha', 'sketch_params', 'rasterized',
         'ma', 'name', 'path_effects', 'url', 'fontweight', 'lod', 'zorder', 'position',
         'animated', 'bbox'
@@ -1019,9 +1156,118 @@ def text(x, y, s, **kwargs):
     return get_axes_kw(kwargs).text(x, y, s, **kwargs)
 setpfdoc(text, plt.Axes.text.__doc__, "text")
 
+@texts.decorate(1, "textobj")
+def textset(textobj, **kwargs):
+    """ PlotFunc. Set all parameters to a text object *textobj* """
+    return textobj.set(**kwargs)
+
+@texts.decorate(1, "textlist")
+def textsset(textlist, **kwargs):
+    """ PlotFunc. Set all parameters to a list of text object *textlist* """
+    for textobj in textlist:
+        textobj.set(**kwargs)
+
+@texts.decorate(1, "axis", "which")
+def ticklabels(axis, **kwargs):
+    """ PlotFunc. Set all parameters to all tick labels of axis *axis* """
+    if axis is "both":
+        return ticklabels("x", **kwargs)+ticklabels("y", **kwargs)
+
+    axis = get_axis_kw2(axis, kwargs)
+    labels = axis.get_ticklabels(which=kwargs.pop("which"))
+
+    if not len(kwargs):
+        return labels
+    for textobj in labels:
+        textobj.set(**kwargs)
+    return labels
+
+@texts.decorate(("text","label"), "fontdict", "labelpad", "axis", "xlabel", "ylabel")
+def label(text=None,  fontdict=None, labelpad=None,
+          axis=None, xlabel=None, ylabel=None, **kwargs):
+    """ PlotFunc. Set all parameters to all tick labels of axis *axis* """
+
+    if axis in ("both", None):
+        return [label("x", text, fontdict=fontdict,
+                      labelpad=labelpad, xlabel=xlabel,
+                      **kwargs),
+                label("y", text, fontdict=fontdict,
+                      labelpad=labelpad, ylabel=ylabel,
+                      **kwargs)]
+    if text is None:
+        if axis in ("x", "X", 0):
+            text = xlabel
+        elif axis in ("y", "Y", 1):
+            text = ylabel
 
 
+    axis  = get_axis_kw2(axis, kwargs)
+    if labelpad is not None:
+        axis.labelpad = labelpad
 
+    label = axis.label
+    if fontdict is not None:
+            axis.label.update(fontdict)
+    axis.isDefault_label = False
+
+
+    if text is not None:
+        label.set_text(text)
+    label.update(kwargs)
+    return label
+
+@texts.decorate(("text","title"), "fontdict", "loc")
+def title(text=None,  fontdict=None, loc="center", **kwargs):
+    if text is None:
+        return None
+    return get_axes_kw(kwargs).set_title(text, fontdict, loc, **kwargs)
+
+@label.decorate("xlabel", axis="x")
+def xlabel(*args,**kwargs):
+    return label(*args, **kwargs)
+
+@label.decorate("ylabel", axis="y")
+def ylabel(*args,**kwargs):
+    return label(*args, **kwargs)
+
+
+@line2d.decorate(1, "axis", "which", "where")
+def ticklines(axis,**kwargs):
+    if axis is "both":
+        return ticklines("x", **kwargs)+ticklines("y", **kwargs)
+
+    axis = get_axis_kw2(axis, kwargs)
+
+    lines = axis.get_ticklines(kwargs.pop("which","major")=="minor")
+
+    pos = kwargs.pop("where", None)
+    if pos:
+        if pos in ("default",):
+            lines = lines[::2]
+        elif pos in ("opposite",):
+            lines = lines[1::2]
+        elif axis.axis_name in ("X","x", 0):
+            if pos in ["top", "t"]:
+                lines = lines[1::2]
+            elif pos in ["bottom", "b"]:
+                lines = lines[::2]
+            else:
+                raise ValueError("with axis='x', where should be one of 'top', 'bottom', 'default', 'opposite', got '%s'"%pos)
+        elif axis.axis_name in ("Y","y", 1):
+            if pos in ["right", "r"]:
+                lines = lines[1::2]
+            elif pos in ["left", "l"]:
+                lines = lines[::2]
+            else:
+                raise ValueError("with axis='y', where should be one of 'right', 'left', 'default', 'opposite', got '%s'"%pos)
+        else:
+            raise ValueError("where should be one of 'top', 'bottom', right', 'left', 'default', 'opposite', got '%s'"%pos)
+    if not len(kwargs):
+        return lines
+
+    for l in lines:
+        l.set(**kwargs)
+    return lines
 
 legend = plotfunc.derive(0, "loc", "bbox_to_anchor", "ncol", "prop", "fontsize",
                      "numpoints", "scatterpoints","scatteryoffsets","markerscale",
@@ -1419,32 +1665,180 @@ setpfdoc(hist2d, plt.Axes.hist2d.__doc__, "hist2d")
 
 
 
-class _BaseFigAxes(object):
-    """ just a colection of usefull axes/figure
-    for other plots
-    """
-    aclear = aclear
-    fclear = fclear
-    aset = aset
-    fset = fset
-    show = show
-    draw = draw
-    legend = legend
-    grid = grid
-    savefig = savefig
-    def get_axes(self):
-        """ Return the matplotlib axes linked """
-        return get_axes(self.get("axes", None), self.get("figure", None))
-    def get_figure(self):
-        """ Return the matplotlib figure linked """
-        return get_figure(self.get("figure", None), self.get("axes", None))
-    @property
-    def axes(self):
-        return self.get_axes()
-    @property
-    def figure(self):
-        return self.get_figure()
 
+
+# counter = 0
+# class Tick(PlotFactory):
+#     lines = ticklineset
+#     labels = ticklabelset
+
+#     _tickset = tickset
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#     def set(self, **kwargs):
+#         global counter
+#         print (counter)
+#         counter += 1
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self._tickset()
+#         self.lines()
+#         self.labels()
+
+# tick = Tick()
+
+# class XYTick(PlotFactory):
+#     default = bottom
+#     opposite = top
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self.default()
+#         self.opposite()
+
+# class XTick(XYTick):
+#     top = tick.derive(where="top")
+#     bottom = tick.derive(where="bottom")
+#     default = bottom
+#     opposite = top
+# xtick = XTick(axis="x")
+
+# class YTick(XYTick):
+#     left = tick.derive(where="left")
+#     right = tick.derive(where="right")
+#     default = left
+#     opposite = right
+# ytick = YTick(axis="y")
+
+
+
+# class SubTick(PlotFactory):
+#     x = xtick
+#     y = ytick
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self.x()
+#         self.y()
+
+# class Ticks(PlotFactory):
+#     major = SubTick(which="major")
+#     minor = SubTick(which="minor")
+#     x = major.x
+#     y = major.y
+
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#         #p.update(kwargs.pop(KWS,{}), **kwargs)
+
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self.major()
+#         self.minor()
+# ticks = Ticks()
+
+# class ATicks(PlotFactory):
+#     major = SubTick(which="major")
+#     minor = SubTick(which="minor")
+#     x = major.x
+#     y = major.y
+
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#         #p.update(kwargs.pop(KWS,{}), **kwargs)
+
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self.major()
+#         self.minor()
+
+
+# def _special_prepare(special_def, kwargs):
+#     specials = {}
+#     for func, sk, kd in special_def:
+#         kw = kwargs.pop(kd, {} )
+#         ls = len(sk)
+#         kw.update({k[ls:]:kwargs.pop(k) for k in kwargs.keys() if k[0:ls] == sk})
+#         specials[func] = kw
+#     return specials
+
+# class Axis(PlotFactory):
+#     axisset = axisset
+#     ticklabel = ticklabelset
+#     label = labelset
+#     ticks = ticks
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         #p.update(kwargs.pop(KWS,{}), **kwargs)
+#         p.set(**kwargs)
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+
+#         specials = _special_prepare(
+#                 [(self.ticklabel, "tl_", "ticklabels"),
+#                  (self.label, "l_", "labels"),
+#                  (self.ticks, "t_", "ticks")
+#                 ],
+#             kwargs
+#             )
+
+#         self.axisset()
+#         for func, kw in specials.iteritems():
+#             func(axes=axes, **kw)
+
+#     @property
+#     def axis(self):
+#         return get_axis(self.get("axis","x"),
+#                  self.get("axes",None),
+#                  self.get("figure",None)
+#                  )
+# axis = Axis()
+
+# class XYAxis(PlotFactory):
+#     x = axis.derive(axis="x")
+#     y = axis.derive(axis="y")
+
+#     @staticmethod
+#     def finit(p, **kwargs):
+#         p.set(**kwargs)
+#         #p.update(kwargs.pop(KWS,{}), **kwargs)
+
+#     def set(self, **kwargs):
+#         self.update(kwargs.pop(KWS,{}), **kwargs)
+#         self.x()
+#         self.y()
+# axis = XYAxis()
+# xaxis = axis.x
+# yaxis = axis.y
+
+
+def fset(plots, *args, **kwargs):
+    plots = plots.derive()
+    specials = _special_prepare([(plots.adjust, "a_", "adjust")], kwargs)
+    for func, sk, kd in special_def:
+        kw = kwargs.pop(kd, {} )
+        ls = len(sk)
+        kw.update({k[ls:]:kwargs.pop(k) for k in kwargs.keys() if k[0:ls] == sk})
+        specials[func] = kw
+
+
+    plots.update(kwargs.pop(KWS, {}), **kwargs)
+    plots._fset()
+    fig = plots.figure
+    suptitle = plots.get("suptitle", None)
+    if suptitle:
+        fig.suptitle(suptitle)
+
+
+
+    for func, kw in specials.iteritems():
+        func(axes=axes, **kw)
 
 
 

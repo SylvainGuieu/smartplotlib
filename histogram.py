@@ -61,23 +61,77 @@ def _statbin(x, values, fstat="mean", bins=10,
 
 @histogram.initier
 def histogram(plot, *args, **kwargs):
+    """ Plot Factory that compute histogram and maxes a XYPlot 
+
+    The parameters are the same than the numpy.histogram function.
+    All other parameters are plots parameters
+
+    Computation Parameters
+    ----------------------    
+    data : array like
+        the one dimentional array of data to build histogram of
+    bins : array, tuple, int, optional
+        Array of bins or tuple of (min, max, N) or a integer (default=10)
+        If an integer, the min(data), max(data) are taken.
+    range : 2xtuple, optional  
+        min, max boundary for the data. None means no boundary.
+        e.g:  (None,4.5) will take 4.5 as maximum and no minimum constrains
+    weights : array like, optional
+        data weights, must be of the same size than data
+    density : bool, optional 
+        If False (default), the result will contain the number of samples
+        in each bin.  If True, the result is the value of the
+        probability *density* function at the bin, normalized such that
+        the *integral* over the range is 1. Note that the sum of the
+        histogram values will not be equal to 1 unless bins of unity
+        width are chosen; it is not a probability *mass* function.
+        Overrides the `normed` keyword if given.
+
+    Specific Plot Parameters    
+    ------------------------    
+    bottom : float
+        the bottom ground value of histogram 
+    align : string     
+        'mid' or 'center', 'right', 'left'
+        position of bars regarding the bins center.
+        defult is 'mid'
+    orientation: string
+        'vertical' or 'horizontal' orientation of histogram bars.       
+    rwidth : float
+        The relative width of the plotted bins regarding its phisical 
+        value. Default is 1.0
+    roffset : float
+        The  relative offset of plotted bars. 
+        Use rwidth, roffset to make some space for other histograms
+    last : A previous xyplot created with histogram, used to stack histogram 
+        together.
+            
+                            
+        
+    Returns
+    -------
+    xyplot : a XYPlot plot colection instance. The following parameters are altered:
+        Built Parameters
+        ----------------
+        x : array like
+            The computed bins data
+        y : array like
+            The computed histogram 
+
+
+    """    
     plot.update(kwargs.pop(KWS,{}), **kwargs)
 
-    (data, bins, bin_range, weights) = plot.parseargs(args,
-             "data", "bins", "range",  "weights",
-             bins=10, range=None,  weights=None)
+    (data, bins, bin_range, weights, density) = plot.parseargs(args,
+             "data", "bins", "range",  "weights", "density",
+             bins=10, range=None,  weights=None, density=False)
 
- # NOTE: the range keyword overwrites the built-in func range !!!
-    #       needs to be fixed in numpy                           !!!
 
-    # Validate string inputs here so we don't have to clutter
-    # subsequent code.
-
-    density = plot.get("density", False)
+    
 
     binsgiven = (hasattr(bins, "__iter__") or bin_range is not None)
     if not binsgiven:
-        bin_range = (np.min(data), np.max(data))
+        bin_range = (np.nanmin(data), np.nanmax(data))
 
 
     m, bins = np.histogram(data, bins, weights=weights, range=bin_range,
@@ -97,28 +151,35 @@ def histogram(plot, *args, **kwargs):
 def _makebinedstatplot(plot, m, bins, err):
 
     (cumulative, bottom,  align,
-    orientation, rwidth, log,
-    stacked, rsep, roffset, amplitude, count) = plot.parseargs([],
+     orientation, rwidth, log,
+     stacked, rsep, roffset, amplitude, count, 
+     last
+    ) = plot.parseargs([],
              "cumulative", "bottom",  "align",
              "orientation", "rwidth", "log",
               "stacked", "rsep", "roffset", "amplitude","count",
+             "last", 
              bins=10, range=None,  weights=None,
              cumulative=False, bottom=None, align='mid',
              orientation='vertical', rwidth=1.0, log=False,
              stacked=False, rsep=None, roffset=0.0,
              amplitude=1,
-             count=0
+             count=0, last=None
              )
     if rsep is None:
         rsep = rwidth
 
     if stacked:
-        try:
-            last = plot["last"]
-        except KeyError:
-            raise ValueError("cannot stack histogram, need the 'last' parameter")
-        bottom = last
-        m += last
+        if last is not None:
+            if isinstance(last, XYPlot):
+                try:
+                    last = last["last"]
+                except KeyError:
+                    raise ValueError("The xyplot given in last parameters does not seems to be from a histogram plot factory")        
+            if np.asarray(last).shape != m.shape:
+                raise ValueError("Previous histogram given in last parameter does not have the same size of current histogram. Did the bins changed ?")
+            bottom = last
+            m += last
 
     lasty = plot.get("lasty", None)
 

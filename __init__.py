@@ -28,7 +28,11 @@ from plotclasses import (XYPlot, DataPlot, ImgPlot,
                         )
 
 from .base import PlotFactory, PlotFunc
+from .styler import new_style, info_style
 from .stack import stack, stackd
+import styles
+
+
 
 plot_axes_classes.extend([PlotFactory, PlotFunc])
 

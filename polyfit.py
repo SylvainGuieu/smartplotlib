@@ -1,7 +1,7 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from . import plotfuncs as pfs
-from .plotclasses import (XYPlot, xyplot)
+from .plotclasses import (XYPlot, xyplot, XYFit)
 
 from .recursive import KWS, alias
 from .base import PlotFactory
@@ -28,7 +28,7 @@ class PolyFit(XYPlot):
         """
         if coeff is None: return None
         if label_x is None:
-            label_x = "x" if xlabel is None else xlabel.split(" ",1)[0]
+            label_x = "x"
 
         return polyfitcoef2text(coeff, label_fmt, label_x)
 
@@ -36,7 +36,6 @@ class PolyFit(XYPlot):
         out = ""
         for i,c in zip(range(dim+1),list("abcdefghijklmnopqrstuvwxyz")):
             out += ("+" if i else "")+c+("x^%d"%i if i else "")
-
         return out
 
     @property
@@ -53,6 +52,7 @@ class PolyFit(XYPlot):
     def label(self):
         return self.get_label()
 
+                
     @staticmethod
     def finit(plot, *args, **kwargs):
         """ PlotFactory object where a polynomial fit is performed
@@ -118,23 +118,40 @@ class PolyFit(XYPlot):
 
         (x, y, dim, xrange, yrange,
          xerr, yerr, xmin,
-         xmax, npoints) = plot.parseargs(args, "x", "y", "dim",
+         xmax, npoints, fin, fout, fcoeff) = plot.parseargs(args, "x", "y", "dim",
                                   "xrange", "yrange",
                                   "xerr", "yerr", "xmin",
-                                  "xmax", "npoints",
+                                  "xmax", "npoints", "fin", "fout", "fcoeff", 
+                                  x=plot.locals.get("_x_", None), 
+                                  y=plot.locals.get("_y_", None),
                                   dim=1, xrange=None, yrange=None,
                                   xerr=None, yerr=None,
                                   xmin=None, xmax=None,
-                                  npoints=None,
+                                  npoints=None,fin=None, fout=None, fcoeff=None
                                   )
+        if y is None:
+            raise ValueError("missing y data")
+        if x is None:
+            x = np.arange(len(y))    
+        
+        plot.update(_x_ = x, _y_ = y) #store the original data for a call back              
 
-        coeff, xmin, xmax, npoints, _ = polyfit_prepare(x, y,
-                                       dim=dim, xrange=xrange,
-                                       yrange=yrange, xmax=xmax,
-                                       xerr=xerr,yerr=yerr,
-                                       xmin=xmin, npoints=npoints
-                                      )
+        xmin, xmax, npoints, (xc,yc,xerrc,yerrc) = polyfit_prepare(x, y,
+                                                       dim=dim, xrange=xrange,
+                                                       yrange=yrange, xmax=xmax,
+                                                       xerr=xerr,yerr=yerr,
+                                                       xmin=xmin, npoints=npoints
+                                                      )
 
+        if fin:
+            xc, yc = fin(plot, xc, yc)
+
+        polycoeff = _mpolyfit(np.array(xc),np.array(yc),dim)    
+
+        if fcoeff:
+            coeff = fcoeff(plot, polycoeff)
+        else:
+            coeff = list(polycoeff)    
 
         label = plot.get("label", None)
 
@@ -146,6 +163,7 @@ class PolyFit(XYPlot):
                 plot["label"] = plot.get_label(coeff)
 
         plot["coeff"] = coeff
+        plot["polycoeff"] = polycoeff
         plot["xmin"] = xmin
         plot["xmax"] = xmax
         plot["npoints"] = npoints
@@ -153,10 +171,15 @@ class PolyFit(XYPlot):
         x = alias(["xmin","xmax","npoints"],
                   lambda p,a: np.linspace(p[a[0]],p[a[1]],p[a[2]]),
                   "-> linspace(xmin, xmax, npoints)")
-
-        y = alias("x", lambda p,x: get_model(p[x], coeff),
-                   "-> y_fit(x)")
         plot["x"] = x
+
+        if fout:
+            y = alias("x", lambda p,k: fout(p, p[k], p['coeff']),
+                   "-> y_fit(x)")
+        else:    
+            y = alias("x", lambda p,k: get_model(p[k], p['coeff']),
+                       "-> y_fit(x)")
+        
         plot["y"] = y
         plot["ymin"] = 0
         plot["ymax"] = y
@@ -166,16 +189,7 @@ class PolyFit(XYPlot):
         plot.goifgo()
 
 
-###
-# Two same versions, one is explicitely a linearfit
-###
-polyfit   = PolyFit(_example_=("polyfit", None))
-linearfit = PolyFit(dim=1, npoints=2, _example_=("polyfit", None))
 
-###
-# add instances to _XYPlot
-XYPlot.linearfit = linearfit
-XYPlot.polyfit = polyfit
 
 
 #################################################################
@@ -308,7 +322,6 @@ def polyfit_prepare(ix,iy, dim=1, xrange=None, yrange=None,
             of points to plot the polynome corectly is returned (for dim=1, npoints=2)
 
     Returns:
-        coef : the fit polynome coeff
         xmin : the xmin, for plot (see above)
         xmax : the xmax, for plot (see above)
         npoints : number of points to plot
@@ -344,7 +357,7 @@ def polyfit_prepare(ix,iy, dim=1, xrange=None, yrange=None,
                                            np.asarray(yerr)]
                               )
 
-    fit_coef = _mpolyfit(np.array(x),np.array(y),dim)
+    
     if npoints is None:
         npoints = 2 if dim<2 else 1000
 
@@ -358,7 +371,8 @@ def polyfit_prepare(ix,iy, dim=1, xrange=None, yrange=None,
     elif xmax in [None,False]:
         xmax = x.max()
 
-    return fit_coef, xmin, xmax, npoints, (x, y, xerr, yerr)
+    return xmin, xmax, npoints, (x, y, xerr, yerr)
+
 
 
 def polyfitcoef2text(coef, fmt="%g", x="x"):
@@ -388,4 +402,137 @@ def polyfitcoef2text(coef, fmt="%g", x="x"):
         out += ("%s"+fmt[i]+" %s ")%( "-" if c<0.0 else "+" if i else "", np.abs(c), xs )
         dim -= 1
     return out
+
+
+
+
+
+
+###
+# REcord classes 
+# Two same versions, one is explicitely a linearfit
+###
+polyfit   = PolyFit(_example_=("polyfit", None))
+linearfit = PolyFit(dim=1, npoints=2, _example_=("polyfit", None))
+
+def inv_formater(plot, coeff):
+    label_fmt, label_x, xlabel = plot.parseargs([], "label_fmt", "label_x", "xlabel", 
+                                                 label_fmt="%g", label_x=None, xlabel=None
+                                                )
+    if label_x is None: 
+        label_x = "x"
+    return   "1/ ("+polyfitcoef2text(coeff, label_fmt, label_x)+")"
+
+invfit = PolyFit( fin=lambda plot,x,y: (x, 1./y), 
+                  fout=lambda plot,x,coeff:1./(get_model(x,coeff)), npoints=100, dim=1, 
+                  label_formater = inv_formater
+                  )
+invfit.finit.__doc__ = """plotfactory fit y = 1/(a*x+ b).  see fitpoly for more options """
+
+###########
+def sqrt_formater(plot, coeff):
+    label_fmt, label_x, xlabel = plot.parseargs([], "label_fmt", "label_x", "xlabel", 
+                                                 label_fmt="%g", label_x=None, xlabel=None
+                                                )
+    if label_x is None: 
+        label_x = "x"
+    return   "sqrt("+polyfitcoef2text(coeff, label_fmt, label_x)+")"
+
+sqrtfit = PolyFit( fin=lambda plot,x,y: (x, y**2), 
+                  fout=lambda plot,x,coeff:np.sqrt(get_model(x,coeff)), npoints=100, dim=1, 
+                  sqrt_formater = sqrt_formater
+                  )
+sqrtfit.finit.__doc__ = """plotfactory fit y = sqrt(a*x+ b).  see fitpoly for more options """
+
+
+
+
+
+def expfcoeff(plot, coeff):
+    origin = plot.get("origin", 0.0)
+
+    if len(coeff)>2:
+        raise ValueError("For expo fit dim should be 1 or 0")
+    if len(coeff)==2:
+        alpha, amp = [coeff[0], np.exp(coeff[1]+origin*coeff[0]) ]
+    else:
+        alpha, amp = [1.0, np.exp(coeff[0]+origin)]
+    return alpha, amp
+
+def expfout(plot, x, coeff):
+    if len(coeff)>2:
+        raise ValueError("For exp fit dim should be 1 or 0")
+    origin = plot.get("origin", 0.0)
+    return coeff[1]*np.exp(coeff[0]*(x-origin))
+        
+def exp_formater(plot, coeff):
+    label_fmt, label_x, xlabel = plot.parseargs([], "label_fmt", "label_x", "xlabel", 
+                                                 label_fmt="%g", label_x=None, xlabel=None
+                                                )
+    if label_x is None: 
+        label_x = "x"
+    origin = plot.get("origin", 0.0)
+
+    coeff = [label_fmt%c for c in coeff]
+
+    if origin:            
+        return  "{1} Exp({0}*({x}-{origin}))".format(*coeff, origin=origin, x=label_x)    
+    return "{1} Exp({0}*({x}))".format(*coeff, x=label_x)    
+            
+
+expfit = PolyFit( fin = lambda plot,x,y: (x, np.log(y)), 
+                  fcoeff = expfcoeff,   
+                  fout   =  expfout,
+                  npoints=100, dim=1, 
+                  label_formater = exp_formater
+                  )
+
+
+def gaussfcoeff(plot, coeff):
+    if len(coeff)!=3:
+        raise ValueError("For gauss fit dim should be 2")    
+    sigma = 1./coeff[0]    
+    xo = -0.5*sigma*coeff[1]
+    A = np.exp( coeff[2] - xo*xo/sigma)
+    return [sigma, x0, A]
+
+def gaussfout(plot, x, coeff):
+    if len(coeff)!=3:
+        raise ValueError("For gauss fit dim should be 2")    
+    sigma, xo, A = coeff    
+    return A*np.exp((x-x0)**2/sigma)        
+
+def gauss_formater(plot, coeff):
+    label_fmt, label_x, xlabel = plot.parseargs([], "label_fmt", "label_x", "xlabel", 
+                                                 label_fmt="%g", label_x=None, xlabel=None
+                                                )
+    if label_x is None: 
+        label_x = "x"
+    orgigin = plot.get("origin", 0.0)
+
+    coeff = [label_fmt%c for c in coeff]
+
+
+
+    return  "{2} Exp( ({x}-{1})^2 / {0} )".format(*coeff, x=label_x)                
+
+gaussfit = PolyFit(
+                  fin = lambda plot,x,y: (x, np.log(y)), 
+                  fcoeff = gaussfcoeff,    
+                  fout   =  gaussfout,
+                  npoints=100, dim=2, 
+                  label_formater = gauss_formater
+                  )
+
+###
+# add instances to XYPlot
+XYPlot.linearfit = linearfit
+XYPlot.polyfit = polyfit
+
+XYFit.inverse = invfit
+XYFit.sqrtfit = sqrtfit
+XYFit.linear = linearfit
+XYFit.polynome = polyfit
+XYFit.exp  = expfit
+XYFit.gaussfit  = gaussfit
 

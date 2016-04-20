@@ -21,7 +21,7 @@ def xcorr():
 
     # set the axes plot the y=0 line, plot vlines of the corelation
     # plus scatter to make it nice, show and canvas.draw the figure
-    corr.go("aset", "subplot.axhline", "vlines", "scatter",
+    corr.go("axes", "subplot.axhline", "vlines", "scatter",
             "show", "draw")
     return corr
 
@@ -49,7 +49,7 @@ def xyplot():
                                   ylabel="Signal"
                                  )
     model.fclear() # fclear is the same can be called on who you want
-    model.aset()
+    model.axes()
 
     model.plot() # plot the model
     data.errorbar() # plot data with errorbar
@@ -103,9 +103,9 @@ def polyfit():
 
     ##
     # other method can be done with the go method
-    # here. aset plot, set the axes labels etc ..., legend plot
+    # here. axes plot, set the axes labels etc ..., legend plot
     # the legend,  than show and draw are figure.show() and figure.canvas.draw()
-    xy.go("aset", "legend", "show", "draw")
+    xy.go("axes", "legend", "show", "draw")
     return plf
 
 
@@ -145,10 +145,10 @@ def specgram():
     spec = xy.ydata.specgram(NFFT=NFFT, Fs=Fs, noverlap=900,
                              cmap=cm.gist_heat, axes=212)
     xy.fclear()
-    xy.aset()
+    xy.axes()
     xy.plot()
-    # above is same as xy.go("fclear", "aset", "plot")
-    spec.go("aset", "imshow", "show", "aset", "draw")
+    # above is same as xy.go("fclear", "axes", "plot")
+    spec.go("axes", "imshow", "show", "axes", "draw")
     return spec
 
 def spectrum():
@@ -173,7 +173,7 @@ def spectrum():
     ###
     ###
     # plot the original data
-    xy.go("fclear", "aset", "plot")
+    xy.go("fclear", "axes", "plot")
 
     ###
     # xy.ydata is a dataplot from whish data is aliased to "y"
@@ -187,9 +187,9 @@ def spectrum():
                                )
     p = xy.ydata.phase_spectrum(axes=313, color="red")
 
-    a.go("aset", "plot")
-    p.plot() # p is on same axes than a no need to make aset
-    m.go("aset", "plot", "draw", "show")
+    a.go("axes", "plot")
+    p.plot() # p is on same axes than a no need to make axes
+    m.go("axes", "plot", "draw", "show")
 
     return m
 
@@ -209,7 +209,7 @@ def psd():
                 axes=211, hspace=0.4)
 
 
-    xy.go("fclear", "fset", "aset", "plot")
+    xy.go("fclear", "fset", "axes", "plot")
     psd = xy.ydata.psd(axes=212, Fs=Fs)
     psd.axvline([5, 20,40,60,80], color="red", linestyle="--")
     ###
@@ -218,7 +218,7 @@ def psd():
     # that easy :
     #    psd.plot(y=alias("psd"))
 
-    psd.go("aset", "plot")
+    psd.go("axes", "plot")
 
     xy.go("show", "draw")
     return psd
@@ -246,9 +246,9 @@ def csd():
 
     csd = xyplot.csd(s1, s2, 256, 1./dt, axes=212)
 
-    xy.go("fclear", "aset")
+    xy.go("fclear", "axes")
     xy.plot(t, s1, 'b-', t, s2, 'g-')
-    csd.go("plot", "aset", "show", "draw")
+    csd.go("plot", "axes", "show", "draw")
 
 
 
@@ -263,7 +263,7 @@ def binedstat():
     y = 5+yerr
     xy = xyplot(x, y, fmt="k+", axes=211)
 
-    xy.go("fclear", "aset", "plot")
+    xy.go("fclear", "axes", "plot")
 
     stat = xy.ydata.binedstat.derive(linestyle="-")
 
@@ -285,7 +285,7 @@ def binedstat():
 
     std = stat(axes=212, fstat="std", ylabel="Std",
                linestyle="solid", label="bined std")
-    std.go("aset","fill")
+    std.go("axes","fill")
     ##
     # fit a polynome on the newly created standar deviation
     # histogram. label=True mean that result of the fit is plotted
@@ -305,7 +305,7 @@ def xbinedstat():
     y = 5+yerr
     xy = xyplot(y, x, fmt="k+")
 
-    xy.go("fclear", "aset", "plot")
+    xy.go("fclear", "axes", "plot")
 
 
     stat = xy.xdata.binedstat.derive(linestyle="-", direction="x")
@@ -326,7 +326,7 @@ def xbinedstat():
     y = 5+yerr
     xy = xyplot(y, x, marker="+", color="k")
 
-    xy.go("fclear", "aset", "plot")
+    xy.go("fclear", "axes", "plot")
 
     ## itertcall iter on iterable and call the instances
     s, m = xy.xbinedstat.itercall(fstat=["std","mean"],color=["red", "blue"])
@@ -367,7 +367,7 @@ def histogram():
            label="some data"
           )
 
-    h1.go("aset", "bar", "errorbar")
+    h1.go("axes", "bar", "errorbar")
 
     ###
     # make a second histogram on the same figure
@@ -381,7 +381,7 @@ def histogram():
            ylabel="Fitted Density",
            axes=222
            )
-    h2.go("aset", "bar", "errorbar")
+    h2.go("axes", "bar", "errorbar")
     ##
     # fit the distribution an plot
     # label=True will generate a label with fit result
@@ -410,7 +410,7 @@ def histogram():
            ylabel="+- Histogram",
            axes=223
           )
-    h3.go("aset", "bar", "errorbar")
+    h3.go("axes", "bar", "errorbar")
     ####
     # make a opposite histogram, since stacked is false one must
     # put the counter to 0
@@ -427,7 +427,7 @@ def histogram():
            axes=224, rwidth=0.4, align="mid",
            roffset=-0.2
           )
-    h4.go("aset", "bar", "errorbar")
+    h4.go("axes", "bar", "errorbar")
     ####
     # make a opposite histogram, since stacked is false one must
     # put the counter to 0
@@ -437,7 +437,7 @@ def histogram():
 
     return h1, h2, h3, h4
 
-    a = subplot(figure="matplotlib.hist", go=["fclear","aset"],
+    a = subplot(figure="matplotlib.hist", go=["fclear","axes"],
                sharey=h, sharex=h, axes=211
                )
     a.hist([data1,data2], bins=bins, color=["blue", "green"],
@@ -482,12 +482,12 @@ def cohere():
     ps1 = xyplot(t, s1, fmt='b-', y2= s2, fmt2="g-",
                  axes=211, xlabel="time", ylabel="s1 & s2")
 
-    ps1.go("fclear", "aset", "plot")
+    ps1.go("fclear", "axes", "plot")
 
     c = xyplot.cohere(s1, s2, 256, 1./dt,
                       ylabel="coherence", axes=212)
 
-    c.go("aset", "plot", "draw", "show")
+    c.go("axes", "plot", "draw", "show")
     return c
 
 
@@ -504,11 +504,11 @@ def annotates():
                 arrowprops=dict(width=2), axes=211,
                 ylim=(-20,100), xlim=(-1,10)
                 )
-    xy.go("fclear", "aset", "plot", "annotates")
+    xy.go("fclear", "axes", "plot", "annotates")
 
     # or an other fancy way to cycle is to use the iter method
     xy.plot(axes=212)
-    xy.aset(axes=212)
+    xy.axes(axes=212)
     ans = [a() for a in  xyplot.annotates.iter(len(x), x=x, y=y,
                                               texts=list("abcdefghijklmnopqrstuvwxyz"),
                                               dx=0.0,
@@ -551,11 +551,11 @@ def eventplot():
     ax1.fclear()
     ax1.eventplot(data1, colors=colors1, lineoffsets=lineoffsets1,
                   linelengths=linelengths1)
-    ax1.aset()
+    ax1.axes()
 
     ax2.eventplot(data1, colors=colors1, lineoffsets=lineoffsets1,
                   linelengths=linelengths1)
-    ax2.aset()
+    ax2.axes()
 
     ax1.go("show", "draw")
 
@@ -572,7 +572,7 @@ def eventplot():
     for  a in axs.iteraxes(2,1,
                           title=["horizontal eventplot", "vertical eventplot"],
                           orientation=["horizontal", "vertical"]):
-        a.go("aset","eventplot")
+        a.go("axes","eventplot")
 
     axs.go("show", "draw")
 

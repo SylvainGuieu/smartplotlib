@@ -1,16 +1,109 @@
 from __future__ import division, absolute_import, print_function
 
 from .recursive import alias, KWS
-from .base import PlotFactory
+from .base import PlotFactory, rproperty
 from . import plotfuncs as pfs
-from .plotfuncs import _BaseFigAxes
-from .figaxes import subplot, plots
+
+from .figaxes import subplot, plots, axes, figure, fa
+
 import numpy as np
+
+
+class _BaseFigAxes(object):
+    """ just a colection of usefull axes/figure
+        for other plots.
+    """
+
+    subplot = subplot
+    axes = axes
+    plots = plots
+    figure = figure
+
+    aclear = pfs.aclear
+    fclear = pfs.fclear
+    cla = pfs.aclear
+    clf = pfs.fclear
+        
+
+    def fa(self, **kwargs):
+        self.axes(**kwargs)
+        self.figure(**kwargs)
+
+    #axes = axes
+    #fset = fset
+    show = pfs.show
+    draw = pfs.draw
+    legend = pfs.legend
+    grid = pfs.grid
+    savefig = pfs.savefig
+
+    @rproperty
+    def grids(self):
+        """ axes.grids plot setter """
+        return self.axes.grids
+
+    @rproperty
+    def xlabel(self):
+        """ axes.x.label plot setter """
+        return self.axes.x.label   
+    
+    @rproperty
+    def ylabel(self):
+        """ axes.y.label plot setter """
+        return self.axes.y.label
+
+    @rproperty
+    def labels(self):
+        """ axes.labels plot setter """
+        return self.axes.labels          
+    
+    @rproperty
+    def xaxis(self):
+        """ axes.x plot setter """
+        return self.axes.x
+
+    @rproperty
+    def yaxis(self):
+        """ axes.y plot setter """
+        return self.axes.y
+
+    @rproperty
+    def ticks(self):
+        """ axes.ticks plot setter """
+        return self.ticks
+    
+    @rproperty
+    def xticks(self):
+        """ axes.x.ticks plot setter """
+        return self.axes.x.ticks    
+
+    @rproperty
+    def yticks(self):
+        """ axes.y.ticks plot setter """
+        return self.axes.y.ticks        
+
+    def get_axes(self):
+        """ Return the matplotlib axes linked """
+        return pfs.get_axes(self.get("axes", None), self.get("figure", None))
+    def get_figure(self):
+        """ Return the matplotlib figure linked """
+        return pfs.get_figure(self.get("figure", None), self.get("axes", None))
+    @property
+    def a(self):
+        return self.get_axes()
+    @property
+    def f(self):
+        return self.get_figure()
+
+
 
 """
 Define the main plot classes and their plotfuncs
 All the other more sofiticated Plots are added later
 """
+
+
+
 
 def _k2edge(plot,k):
     """convert array plot[k] to bar edge (remove the last)"""
@@ -86,7 +179,19 @@ class _subxy(object):
     def __getslice__(self, start, end):
         return self.__getitem__(slice(start, end))
 
+class XYFit(PlotFactory, _BaseFigAxes):
+    """ a PlotColection of fit factory for x vs y type of data 
 
+        PlotFactory Methods:
+        |------------|------------|-------------------------------------------------|
+        |   method   |  Factory   |                     comment                     |
+        |------------|------------|-------------------------------------------------|
+        | polynome   | XYPlot     | polynome fitting capability from x/y data       |
+        | linear     | XYPlot     | polynome fit with dim=1                         |
+        | inverse    | XYPlot     | fit y = (a*x +b)                                |
+
+    """
+    pass
 
 class XYPlot(PlotFactory, _BaseFigAxes):
     """ PlotFactory. Return a new instance of xyplot ready to plot 2d x/y data
@@ -192,7 +297,7 @@ class XYPlot(PlotFactory, _BaseFigAxes):
         |            |            | of thi xyplot                                   |
         | plots      | Plots      | return a plots factory (plots linked to figure) |
         |            |            | with all default taken from that xyxplot        |
-        |            |            |                                                 |
+        | fits       | PlotCollec | containe fit plot factory                       |
         |------------|------------|-------------------------------------------------|
 
 
@@ -206,9 +311,8 @@ class XYPlot(PlotFactory, _BaseFigAxes):
 
     """
     sub = _subxy()
-
-    subplot = subplot
-    plots = plots
+    fits = XYFit()
+    
 
     plot = pfs.plot
     step = pfs.step
@@ -250,20 +354,18 @@ class XYPlot(PlotFactory, _BaseFigAxes):
     annotates = pfs.annotates
 
     @staticmethod
-    def finit(plot,*args,**kwargs):
+    def finit(plot, *args,**kwargs):
         """ """
         plot.update(kwargs.pop(KWS,{}), **kwargs)
         x, y = plot.parseargs(args, "x","y",
                               x=None, y=None
                              )
-        if y is None: # x is y
-            if x is None:
-                raise ValueError("missing y data")
-            y = x
-            x = alias("x", lambda p,k :np.arange(np.asarray(p["y"]).shape[0]))
-        else:
-            if x is None:
-                x = alias("x", lambda p,k :np.arange(np.asarray(p["y"]).shape[0]))
+        if y is None: # with one arg, x is y
+            if x is not None:
+                y, x = x, None
+        
+        if x is None:
+            x = alias("x", lambda p,k :np.arange(np.asarray(p["y"]).shape[0]), "-> arange(len(y))")
         plot.update(x=x, y=y)
 
 
@@ -412,8 +514,6 @@ def colors_or_z(p,k):
     return p[k] if k in p else p["z"]
 class XYZPlot(PlotFactory, _BaseFigAxes):
     """ plot for 3 dimentional data """
-    subplot = subplot
-    plots = plots
 
     imshow = pfs.imshow.derive(img=alias("colors"), colors=alias("Z"))
     pcolor = pfs.pcolor
@@ -458,8 +558,7 @@ class _subimg(object):
 
 class ImgPlot(PlotFactory, _BaseFigAxes):
     """ plot used for image """
-    subplot = subplot
-    plots = plots
+
 
     imshow = pfs.imshow
     hist = pfs.hist.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten(), "-> img.flatten()"))
@@ -474,8 +573,6 @@ class ImgPlot(PlotFactory, _BaseFigAxes):
 
 
 class ScalarPlot(PlotFactory, _BaseFigAxes):
-    subplot = subplot
-    plots = plots
 
     axline = pfs.axline
     ##
@@ -507,15 +604,15 @@ conveniant = """
         |--------|-------------------------------------------------|
         | method |                      action                     |
         |--------|-------------------------------------------------|
-        | aset   | set all valid axes parameters to the axes plot. |
-        |        | Like "xlabel", "ylabel", etc ...                |
-        | fset   | set all figure parameters to the given figure   |
+        | axes   | set all valid axes parameters to the axes plot. |
+        |        | Like "xlabel", "ylabel", grid, title etc ...                |
+        | figure | set all figure parameters                       |
         | aclear | clear the axes                                  |
         | fclear | clear the figure                                |
         | legend | plot the axes legend                            |
         | show   | figure.show()                                   |
         | draw   | figure.canvas.draw()                            |
-        | grid   | turn grid on/off                                |
+        | grids  | axes.grids setting                             |
         |--------|-------------------------------------------------|
 """
 useful = """
@@ -525,7 +622,7 @@ useful = """
       | derive     | (Self class)   | A new factory instance where defaults are           |
       |            |                | in self                                             |
       | go         | dict (results) | execute a list actions from list of strings         |
-      |            |                | e.g. .go("aset", "legend", "show")                  |
+      |            |                | e.g. .go("axes", "legend", "show")                  |
       | get        | any object     | As for dict get a parameter value                   |
       | pop        | any object     | As for dict pop a parameter                         |
       | clear      | None           | clear the local parameters                          |

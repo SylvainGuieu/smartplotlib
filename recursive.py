@@ -3,6 +3,7 @@ from __future__ import division, absolute_import, print_function
 import weakref
 import inspect
 
+from glob import fnmatch, has_magic
 
 """ version 2 of recursive
 
@@ -48,6 +49,20 @@ LOOP = 1
 FCYCLE = 4
 
 
+def has_magic_lst(patern):
+    p = patern.strip()
+    return p[0] == "(" and p[-1] == ")"    
+
+def lst_pattern(patern):
+    p = patern.strip()[1:-1] # remove the "( )"
+    return [s.strip() for s in p.split(",")]
+
+def lst_match(k, paterns):
+    for p in paterns:
+        if fnmatch.fnmatch(k,p):
+            return True
+    return False        
+
 
 def newid(obj):
     """ id returned for a RecObject or RecFunc asked at __init__"""
@@ -78,21 +93,29 @@ def relative_getobj(obj, path, getattr=getattr):
         TypeError: if the relative path is below root object
 
     """
-    if not "." in path:
-        return getattr(obj, path)
-
+    
     paths = path.split(".")
-    if paths[0:2] == ['','']: # remove the first blank e.i. first '.'
-        paths = paths[2:]
+    #if paths[0:2] == ['','']: # remove the first blank e.i. first '.'
+    #    paths = paths[2:]
 
-    for attr in paths:
+    iscat = isinstance(obj, CatRecObject)
+    for attr in paths:        
         if not attr:
-            parent = getattr(obj, "parent", None)
-            if parent is None:
-                raise TypeError("relative path below root object")
-            obj = parent
+            continue
+        if has_magic(attr) or has_magic_lst(attr):
+            if iscat:
+                lst = []
+                for child in obj:
+                    lst.extend(_colect_rec_childs(child, attr))
+                obj = CatRecObject(lst)    
+            else:    
+                obj = _colect_rec_childs(obj, attr)
+            iscat = True
         else:
-            obj = getattr(obj, attr)
+            if iscat:
+                obj = CatRecObject([child["."+attr] for child in obj])
+            else:                
+                obj = getattr(obj, attr)
     return obj
 
 def getitempath(obj, path, getattr=getattr):
@@ -167,6 +190,21 @@ def _list_formater(lst, length=80, idt="", braket=-1):
         first = True
     out.append(line+")"*(braket>-1))
     return "\n".join(out)
+
+def _value_formater(value):
+    """ format value for info """
+    if isinstance(value, alias):
+        try:
+            linked_value = self[key]
+        except:
+            value = "{!r}".format(value)+" -> ?"
+        else:
+            value = "{!r}".format(value)+" -> {!r}".format(linked_value)
+    else:
+        value = "{!r}".format(value)
+
+    value = value if len(value)<70 else value.split("\n",1)[0][0:70]+" ..."
+    return value
 
 
 def _get_method_info(obj, output):
@@ -297,6 +335,8 @@ def _build_args(args, substitutions=None):
 
 def _argsadd(args1,args2):
     return args1+tuple(a for a in args2 if not a in args1)
+
+
 
 def merge_args(pf, iargs):
     """ merge  list of args for RecFunc
@@ -749,7 +789,7 @@ class _History_(object):
     def copy(self, deep=False):
         if deep:
             new = _History_((self.i_params.copy(), self.i.copy() if self.i else None),
-                            (self.p_params.copy(), self.p.copy() if self.p else None)                            
+                            (self.p_params.copy(), self.p.copy() if self.p else None)
                             )
         else:
             new = _History_((self.i_params, self.i.copy() if self.i else None),
@@ -772,7 +812,48 @@ class _History_(object):
                 params.setdefault(k,v)
         return params
 
+    def mapall(self, f=lambda p,k,v: p.setdefault(k,v), p=None):
+        p = p or {}
+
+        for k,v in self.i_params.iteritems():
+            f(p,k,v)
+
+        if self.i:
+            for k,v in self.i.all().iteritems():
+                f(p,k,v)
+
+        for k,v in self.p_params.iteritems():
+            f(p,k,v)
+
+        if self.p:
+            for k,v in self.p.all().iteritems():
+                f(p, k, v)
+        return p
+
+    def map(self, f, p):
+        f(p, self.i_params)
+        if self.i:
+            self.i.map(f, p)
+        f(p, self.p_params)
+        if self.p:
+            self.p.map(f, p)
+        return p
+
+    def mapi(self, f, p):
+        f(p, self.i_params)
+        if self.i:
+            self.i.mapi(f, p)
+        return p
+
+    def mapp(self, f, p):
+        f(p, self.i_params)
+        if self.p:
+            self.p.mapp(f, p)
+        return p
+
     def _search(self, item, spath=""):
+
+                    
         try:
             value = self.i_params[item]
         except KeyError:
@@ -789,6 +870,14 @@ class _History_(object):
             else:
                 return value, spath+PSI
 
+        if item is not "__inerit__":        
+            try:
+                inerit, _ =  self._searchi("__inerit__")
+            except KeyError:
+                inerit = None
+            if (inerit is not None) and (item not in inerit):
+                raise KeyError("'%s' (not inerited)"%item)    
+
         try:
             value = self.p_params[item]
         except KeyError:
@@ -804,7 +893,7 @@ class _History_(object):
             else:
                 return value, spath+PSP
 
-        raise KeyError('%s'%item)
+        raise KeyError("'%s'"%item)
 
     def _searchip(self, item, spath=""):
 
@@ -814,6 +903,14 @@ class _History_(object):
             pass
         else:
             return value, spath
+
+        if item is not "__inerit__":        
+            try:
+                inerit, _ =  self._searchi("__inerit__")
+            except KeyError:
+                inerit = None
+            if (inerit is not None) and (item not in inerit):
+                raise KeyError("'%s' (not inerited)"%item)    
 
         try:
             value = self.p_params[item]
@@ -853,6 +950,16 @@ class _History_(object):
         raise KeyError('%s'%item)
 
     def _searchp(self, item, spath=""):
+
+        if item is not "__inerit__":        
+            try:
+                inerit, _ =  self._searchi("__inerit__")
+            except KeyError:
+                inerit = None
+            if (inerit is not None) and (item not in inerit):
+                raise KeyError("'%s' (not inerited)"%item)    
+
+
         try:
             value = self.p_params[item]
         except KeyError:
@@ -880,7 +987,7 @@ class _RecObject_Instanced(object):
         if i:
             ih = i._history
         if p:
-            ph = p._history            
+            ph = p._history
 
         ip = i._params if i else {}
         pp = p._params if p else {}
@@ -897,10 +1004,28 @@ class _RecObject_Instanced(object):
                                     (pp, ph) )
 
         self.ids = ids or newid(self)
-        
+
         if self.finit and self.finit.__doc__:
             self.__doc__ = self.finit.__doc__
 
+    @classmethod
+    def _derive_derived_cl(cl, p):
+        newcl = type(cl.__name__, (cl,), {})
+        ph = p._history
+        pp = p._params
+
+        h = newcl._history 
+
+
+        newcl._history = _History_( (h.i_params, h.i), 
+                                      (pp, ph)
+                                     )    
+        __recobjects__ = {}
+        for k, sub in cl.__recobjects__.iteritems():
+            __recobjects__[k] = sub._derive_derived_cl(newcl)
+        newcl._params = cl._params.copy()    
+        newcl.__recobjects__ = __recobjects__
+        return newcl    
 
 class RecObject(object):
     """ RecObject object is a clolection of RecObject or RecFunc callable and
@@ -1160,12 +1285,16 @@ class RecObject(object):
     """
     _initialized = False
 
-    _default_params = {}
     _derived_cl = False
+
+    _default_params = {"__inerit__":None}
     """ _default_params are always set localy they can be copied from an
-    instance but never from a parent. """
+    instance but never from a parent. 
+    __inerit__ is a list of params to inerit from parent, if None means
+    everything is inerited  
+    """
     _stopped = False
-    
+
     def __init__(self, _init_=None, **params):
 
         if _init_ is not None:
@@ -1228,7 +1357,20 @@ class RecObject(object):
         parents.
 
         """
-        params = self._history.all()
+        inerit = self.locals.get("__inerit__", None)
+        if inerit is None:
+            params = self._history.all()
+            
+        else:
+            params = {}
+            for p in inerit:
+                try:
+                    value, _ =  self._search(p)
+                except KeyError:
+                    pass
+                else:
+                    params[p] = value                
+
         params.update(self.locals)
         return params
 
@@ -1572,13 +1714,21 @@ class RecObject(object):
         """
         new = self._derive(None)
         new.update(params.pop(KWS, {}), **params)
+
         return new
 
     def _derive(self, parent):
 
-        if self._derived_cl:
+        if self._derived_cl:            
             new = self.__class__(None, self, parent, True)
-        else:
+            __recobjects__ = {}
+            for k, sub in new.__recobjects__.iteritems():
+                newsub_cl = sub._derive_derived_cl(new)
+                #newsub_cl = sub(None, sub, new, True)._derive_cl()
+                __recobjects__[k] = newsub_cl
+            new.__recobjects__ = __recobjects__        
+
+        else:            
             new = self._derive_cl()(None,self, parent, True)
 
         new.finit = self.finit
@@ -1590,6 +1740,7 @@ class RecObject(object):
             # the default value made by init
         #    new.locals.update({k:self[k] for k in self._default_params})
         return new
+
 
     def _derive_cl(self):
         cl = self.__class__
@@ -1604,7 +1755,9 @@ class RecObject(object):
         # using the _copy_cl method (copy the class)
         __recobjects__ = {}
         for k, sub in self.__recobjects__.iteritems():
-                __recobjects__[k] = sub._copy_cl()
+                #__recobjects__[k] = sub._copy_cl()
+                __recobjects__[k] = sub._derive_derived_cl(newcl)
+                #__recobjects__[k] =  sub(None, sub, newcl, True)._derive_cl()
         newcl._params = self._default_params.copy()
 
         newcl.__recobjects__ = __recobjects__
@@ -1620,6 +1773,8 @@ class RecObject(object):
             __recobjects__[k] = sub._copy_cl()
         newcl.__recobjects__ = __recobjects__
         return newcl
+    
+
 
     def _new_instance(self, parent):
         """ private func. Return a new instance from a parent.
@@ -1700,7 +1855,7 @@ class RecObject(object):
         obj.set_data(data)
         obj.data is data
         """
-        self["__data__"] = data
+        self["__data__"] = weakref.ref(data)
 
 
     @property
@@ -1711,14 +1866,17 @@ class RecObject(object):
         the data is set by a weakref, if the data object has been deleted
         .data return None and a warning is printed. to avoid any unwanted
         warning use the hasdata attribute.
-
-
+        
         """
-        return self.get("__data__", None)
+        wr = self.get("__data__", None)
+        if wr is None:
+            return None
+        else:
+            return wr()    
 
     @data.setter
     def data(self, data):
-        self.set_data(data)    
+        self.set_data(data)
 
     @property
     def hasdata(self):
@@ -1728,7 +1886,7 @@ class RecObject(object):
         except:
             return False
         else:
-            return True    
+            return True
 
     def __get__(self, data_or_recobject, cl=None):
         if data_or_recobject is None:
@@ -1754,8 +1912,8 @@ class RecObject(object):
         def __getitempath__(self, path, getattr=getattr):
             if isinstance(path, basestring):
                 if not "|" in path:
-                    if "." in path:
-                        path = path.lstrip(".")
+                    if ("." in path) or (has_magic_lst(path)) or (has_magic(path)):
+                        #path = path.lstrip(".")
                         return getitempath(self, (path,), getattr=getattr)
                     return getitempath(self, path, getattr=getattr)
 
@@ -1763,7 +1921,7 @@ class RecObject(object):
                 if len(spath)>2:
                     raise TypeError("to many '|' in '%s'"%path)
                 path, item = [s.strip() for s in spath]
-                path = path.lstrip(".")
+                #path = path.lstrip(".")
                 return getitempath(self, (path,item), getattr=getattr)
 
             return getitempath(self, path, getattr=getattr)
@@ -1776,9 +1934,25 @@ class RecObject(object):
 
         obj, item = self.__getitempath__(path)
         if not len(item):
-            raise KeyError("Missing end point keyword in '%s'"%(
-                           path if isinstance(path,basestring) else ".".join(path)
-                           ))
+            if not isinstance(obj, (CatRecObject, RecObject, RecFunc, dict)):
+                raise TypeError("End point object in '%s' is not a valid object. Usage: obj['a.b'] = {'p1':v1} or obj['a.b|p1'] = v1"%(
+                               path if isinstance(path,basestring) else ".".join(path)
+                               ))
+            try:
+                values = dict(value)
+            except TypeError:
+                raise TypeError("End point object in '%s' is a dict like, value must be a dict like object"%(
+                                path if isinstance(path,basestring) else ".".join(path)
+                                ))
+            except ValueError:
+                raise TypeError("End point object in %s' is a dict like, value must be a dict like object"%(
+                                path if isinstance(path,basestring) else ".".join(path)
+                                ))                               
+            else:
+                obj.update(values)        
+                return 
+
+
         if obj is not self:
             obj[item] = value
             return
@@ -1797,6 +1971,10 @@ class RecObject(object):
             pass
         else:
             return value, spath
+
+        inerit = self.locals.get("__inerit__", None)
+        if (inerit is not None) and (item not in inerit):
+            return self._history._searchi(item, spath)
 
         return self._history._searchip(item, spath)
 
@@ -1824,9 +2002,7 @@ class RecObject(object):
         # from here self[""] return self to allow explicite self["."]
         if not item:
             return self
-        #####################################
 
-        #####################################
         try:
             value, _ =  self._search(item)
         except KeyError:
@@ -1907,6 +2083,10 @@ class RecObject(object):
         for k,v in __d__.iteritems():
             self[k] = v
         self.locals.update(**kwargs)
+
+    def updatedefault(self, __d__={}, **kwargs):
+        for param,value in dict(__d__, **kwargs).iteritems():
+            self.setdefault(param, value)
 
     def setdefault(self, param , value):
         """ set obj[param] = default to the locals dictionary if param not in obj
@@ -2026,6 +2206,8 @@ class RecObject(object):
         all = self.all
         output = []
         for key in all:
+            if key[0:2]=="__" and key[-2:]=="__":
+                continue
             value, spath = self._search(key)
             if isinstance(value, alias):
                 try:
@@ -2049,25 +2231,40 @@ class RecObject(object):
     @property
     def info(self):
         """ print usefull informations """
-        print("{self.__class__.__name__} object ".format(self=self), end="")
+        prt = print
+
+        prt("{self.__class__.__name__} object ".format(self=self), end="")
         idt = " "*4
+        getattr(self, "_info1", None) 
         if self.isinitialized:
-            print(idt+"Initialized")
+            prt(idt+"Initialized")
         else:
-            print("")
-        print()
-        print (idt+"Initializer Function :")
+            prt("")
+        prt()
+        getattr(self, "_info2", None) 
+        prt (idt+"Initializer Function :")
         try:
             finfo = self.finit.func_name+inspect.formatargspec(*inspect.getargspec(self.finit))
         except:
             finfo = str(self.finit)
-        print (idt+"    "+finfo)
-        #print()
-        #print ("Recursive Methods :")
-        #print (_format_methods(self, "self"," "*4))
+        prt (idt+"    "+finfo)
+        #prt()
+        #prt ("Recursive Methods :")
+        #prt (_format_methods(self, "self"," "*4))
+        inerit =  self.get("__inerit__", None)           
+        if inerit:
+            prt()
+            prt(idt+"Innerit only:")
+            prt(_list_formater(inerit,70,idt+" "*4, len(inerit)))
 
-        print()
-        print (idt+"Curent Values : ")
+        if "__data__" in self:
+            prt()
+            prt(idt+"Has data %s: "%(str(self.data)[0:78]))
+
+        getattr(self, "_info3", None)    
+
+        prt()
+        prt (idt+"Curent Values : ")
         infos = self._get_value_info()
         reordered = {}
         for inf in infos:
@@ -2081,32 +2278,33 @@ class RecObject(object):
 
         for l in keys[::-1]:
             for inf in reordered[l]:
-                print(idt+INFMT.format(*inf))
+                prt(idt+INFMT.format(*inf))
 
-        #print("\n".join([idt+INFMT.format(*inf) for inf in infos]))
-        print()
+        getattr(self, "_info4", None)          
+        #prt("\n".join([idt+INFMT.format(*inf) for inf in infos]))
+        prt()
 
 
 
-    def go(self, *funclist):
+    def go(self, *funclist, **kwargs):
         """ Execute actions from list of strings
 
         Because go is a 'conviniant' function, it has many call signature:
 
 
-        obj.go( "aset", "polyfit", "plot", "show")
+        obj.go( "axes", "polyfit", "plot", "show")
             equivalent to:
-                obj.aset() # if aset is a func
+                obj.axes() # if axes is a func
                 obj.polyfit().go() # if polyfit is a Factory
                 obj.plot()
                 obj.show()
             equivalent to:
-                obj.go( ["aset", "polyfit", "plot", "show"] )
+                obj.go( ["axes", "polyfit", "plot", "show"] )
             equivalent to:
-                obj.go( ["aset; polyfit; plot;show"] )
+                obj.go( ["axes; polyfit; plot;show"] )
 
 
-        obj.go("aset", "polyfit:plot,scatter", "show")
+        obj.go("axes", "polyfit:plot,scatter", "show")
             equivalent to:
                 obj.aser()
                 f = obj.polyfit()
@@ -2114,14 +2312,14 @@ class RecObject(object):
                 f.scatter()
                 obj.show()
             equivalent to:
-                 obj.go("aset; polyfit:plot,scatter; show")
+                 obj.go("axes; polyfit:plot,scatter; show")
 
 
         obj.go("-all")
             equivalent to:
                 obj.go(obj["-all"])
               if "-all" is defined and is a list of string
-              e.g. : obj["-all"] = ["aset", "plot", "show", "draw"]
+              e.g. : obj["-all"] = ["axes", "plot", "show", "draw"]
 
         obj.go()
             Take the list of action in the "-" parameter if present.
@@ -2137,11 +2335,17 @@ class RecObject(object):
             a dictionary containing all the results of function called
             the keys are the commant path prefixed with ".":
              e.g.:
-                {'.aset': <matplotlib.axes._subplots.AxesSubplot at 0x10635ea10>,
+                {'.axes': <matplotlib.axes._subplots.AxesSubplot at 0x10635ea10>,
                  '.show': None}
 
 
         """
+        if len(kwargs):
+            params = kwargs.pop(KWS,{})
+            self = self.derive(**kwargs)
+            if params:
+                self.update(params)
+
         if not len(funclist):
             if not "-" in self:
                 return {}
@@ -2172,6 +2376,19 @@ class _RecFunc_Instanced:
         if self.fcall and self.fcall.__doc__:
             self.__doc__ = self.fcall.__doc__
 
+    @classmethod
+    def _derive_derived_cl(cl, p):
+        newcl = type(cl.__name__, (cl,), {})
+        ph = p._history
+        pp = p._params
+
+        h = newcl._history 
+
+
+        newcl._history = _History_( (h.i_params, h.i), 
+                                      (pp, ph)
+                                     )            
+        return newcl    
 
 class RecFunc(object):
     _default_params = {}
@@ -2472,11 +2689,7 @@ class RecFunc(object):
     def __delitem__(self, item):
         del self.locals[item]
 
-
-    def __call__(self, *args, **ikwargs):
-        if not self.fcall:
-            raise TypeError("Not callable")
-
+    def __prepare_call_args__(self, args, ikwargs):
         args = self.getargs(*args)
         kwargs = self.getkwargs(**ikwargs)
         for a,k in zip(args[self.nposargs:], self.kwargnames):
@@ -2484,6 +2697,12 @@ class RecFunc(object):
                 raise TypeError("got multiple values for keyword argument '%s'"%k)
             # remove the extra positional argument from the kwargs
             kwargs.pop(k,None)
+        return args, kwargs
+
+    def __call__(self, *args, **ikwargs):
+        if not self.fcall:
+            raise TypeError("Not callable")
+        args, kwargs = self.__prepare_call_args__(args, ikwargs)
 
         output = self.fcall(*args, **kwargs)
         return output
@@ -2491,6 +2710,10 @@ class RecFunc(object):
     def update(self, __d__={}, **kwargs):
         self.locals.update(__d__, **kwargs)
 
+    def updatedefault(self, __d__={}, **kwargs):
+        for param,value in dict(__d__, **kwargs).iteritems():
+            self.setdefault(param, value)
+            
     def set(self, __d__={}, **kwargs):
         """ same as update but return the object """
         self.update(__d__, **kwargs)
@@ -2700,50 +2923,45 @@ class RecFunc(object):
         output = []
         for key in all:
             value, spath = self._search(key, self.substitutions.get(key,key))
-            if isinstance(value, alias):
-                try:
-                    linked_value = self[key]
-                except:
-                    value = "{!r}".format(value)+" -> ?"
-                else:
-                    value = "{!r}".format(value)+" -> {!r}".format(linked_value)
-            else:
-                value = "{!r}".format(value)
 
-            value = value if len(value)<70 else value.split("\n",1)[0][0:70]+" ..."
             output.append( (
                              spath,
-                             key, value
+                             key, _value_formater(value)
                              )
                           )
         return output
     @property
     def info(self):
-        print ("{self.__class__.__name__} function.".format(self=self))
-        idt = " "*4
-        print()
-        print (idt+"Substitued Parameters :")
-        print (_list_formater(self.args,70,idt+" "*4, self.nposargs))
+        prt = print 
 
-        print()
-        print (idt+"Function called :")
+        prt ("{self.__class__.__name__} function.".format(self=self))
+        idt = " "*4
+        getattr(self, "_info1", None) 
+        prt()
+        prt (idt+"Substitued Parameters :")
+        prt (_list_formater(self.args,70,idt+" "*4, self.nposargs))
+
+        getattr(self, "_info2", None)
+        prt()
+        prt (idt+"Function called :")
         try:
             finfo = self.fcall.func_name+inspect.formatargspec(*inspect.getargspec(self.fcall))
         except:
             finfo = str(self.fcall)
 
 
-        print (idt+" "*4+finfo)
+        prt (idt+" "*4+finfo)
         try:
             fdoc = self.__doc__
         except:
             pass
         else:
             if fdoc:
-                print(idt+"  "+" "*4+ fdoc.split("\n",1)[0].rstrip() )
+                prt(idt+"  "+" "*4+ fdoc.split("\n",1)[0].rstrip() )
 
-        print()
-        print (idt+"Curent Values : ")
+        getattr(self, "_info3", None)         
+        prt()
+        prt (idt+"Curent Values : ")
         infos = self._get_value_info()
         reordered = {}
         for inf in infos:
@@ -2757,12 +2975,14 @@ class RecFunc(object):
 
         for l in keys[::-1]:
             for inf in reordered[l]:
-                print(idt+INFMT.format(*inf))
+                prt(idt+INFMT.format(*inf))
 
 
         if not infos:
-            print(idt+" "*4+"None")
-        print()
+            prt(idt+" "*4+"None")
+
+        getattr(self, "_info4", None)    
+        prt()
 
 
 class RecFuncIterator(object):
@@ -2961,7 +3181,101 @@ class alias(object):
         return self.__str__()
 
 
+def _colect_rec_childs(obj, glob="*"):
 
+    if has_magic_lst(glob):
+        patterns = lst_pattern(glob)
+        matcher = lambda k: lst_match(k, patterns)
+    else:    
+        matcher = lambda k: fnmatch.fnmatch(k, glob)
+
+    lst = []
+    cl = obj.__class__
+    for sub in cl.__mro__:
+        for k,f in sub.__dict__.iteritems():
+            if not isinstance(f, (RecObject, RecFunc, rproperty)):
+                continue
+            if matcher(k):
+                ### must do a getattr here to get an instanced
+                ### recobject 
+                lst.append( getattr(obj, k) )    
+        
+    return CatRecObject(lst)        
+        
+class rproperty(property):
+    pass
+
+
+class CatRecObjectIterator(object):
+    def __init__(self, cat):
+        self.childs_iter = cat.childs.__iter__()
+    def next(self):
+        return self.childs_iter.next()    
+
+class CatRecObject(object):
+    def __iter__(self):
+        return CatRecObjectIterator(self)
+
+    def __init__(self, childs):
+        childs = list(childs)
+        for child in childs:
+            if not isinstance(child, (RecObject, RecFunc, CatRecObject)):
+                raise ValueError("All childs must be of class RecObject or RecFunc got a '%s'"%type(child))
+        self.childs = childs
+    
+    def __setitem__(self,item,value):
+        for child in self:
+            child[item] = value
+
+    def __getitem__(self,item):
+        if isinstance(item , slice):            
+            return CatRecObject(self.childs[item])
+        if isinstance(item, int):
+            return self.childs[item]    
+        
+        lst = []
+        isrec = False
+        for child in self:
+            v = child[item]
+            if isinstance(v, CatRecObject):
+                lst.extend(v)
+            else:
+                lst.append(v)
+            if isinstance(v, (RecFunc, RecObject)):
+                isrec = True
+        if isrec:
+            return CatRecObject(lst)                   
+        return lst
+
+    def __len__(self):
+        return len(self.childs)    
+
+    def clear(self):
+        for child in childs:    
+            child.clear()
+
+    def extend(self, childs):
+        childs = list(childs)
+        for child in childs:
+            if not isinstance(child, (RecObject, RecFunc)):
+                raise ValueError("All childs must be of class RecObject or RecFunc got a '%s'"%type(child))
+        self.childs.extend(childs)
+
+    def append(self, child):
+        if not isinstance(child, (RecObject, RecFunc)):
+            raise ValueError("All childs must be of class RecObject or RecFunc got a '%s'"%type(child))    
+        self.childs.append(child)
+
+    def get(self, item , default=None):
+        return [child.get(item, default) for child in self]
+    
+    def update(self, _kw_={}, **kwargs):
+        for child in self:
+            child.update(_kw_, **kwargs)
+
+
+
+            
 
 
 
@@ -3050,23 +3364,27 @@ def __test__():
     test(18, p0().p00.p000["style"], "***")
     test(19, pp0().p00.p000["style"], "--")
 
+    pp0.p00["mark"] = "++"    
+    test(20, pp0.p00["mark"], "++")
+    pp0.derive().p00["mark"] = "--"
+    test(21, pp0.p00["mark"], "++")
     import gc
 
-    def inc1():
+    def inc1(wr):
         global acumulator1
         acumulator1 += 1
     for i in range(1000):
         tc = P0()
-        wr = weakref.ref(tc , lambda wr : inc1())
+        wr = weakref.ref(tc , inc1)
         _ = tc.p00
 
-    def inc2():
-        global acumulator2
+    def inc2(wr):
+        global acumulator2        
         acumulator2 += 1
     for i in range(1000):
         data = Data()
-        wr = weakref.ref(data , lambda wr : inc2())
-        _ = data.p0.p00
+        wr = weakref.ref(data , inc2)
+        _ = data.p0#.p00
 
     print("1. on 999", acumulator1, "deleted correctly")
     print("2. on 999", acumulator2, "deleted correctly")

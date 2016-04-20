@@ -112,14 +112,14 @@ x = np.arange(50)
 parabola = xyplot(x, x*x, color="red", xlabel="x", ylabel="x^2")
 ```
 
-We have defined parabola which is a new instance of a xyplot with some parameters defined : 'x', 'y' (the second parameter), 'color', 'xlabel', 'ylabel'. All the children of parabola will inherit these parameter but that does not mean they will care about all of them. For instance 'plot' (which plot the data) will used the inherited 'x', 'y' and 'color'. 'aset' which set the axes labels, title, scale, grid , .... etc will only use, in our case, the parameters 'xlabel' and 'ylabel'.
+We have defined parabola which is a new instance of a xyplot with some parameters defined : 'x', 'y' (the second parameter), 'color', 'xlabel', 'ylabel'. All the children of parabola will inherit these parameter but that does not mean they will care about all of them. For instance 'plot' (which plot the data) will used the inherited 'x', 'y' and 'color'. 'axes' which set the axes labels, title, scale, grid , .... etc will only use, in our case, the parameters 'xlabel' and 'ylabel'.
 
 ```python
 >>> parabola.plot() # plot the data
->>> parabola.aset() # set the axes stuff
+>>> parabola.axes() # set the axes stuff
 >>> parabola.show() # show the figure
 # -or- in one line:
->>> parabola.go("plot", "aset", "show")
+>>> parabola.go("plot", "axes", "show")
 ```
 
 Let see an simple example on how to create a plotfactory easily. Imagine you have to plot often a sinus on your graphs, you can of course make a normal function and parse all the keywords to your function with all the different case of plotting, or, you can use a plot factory. As the sinus is a 2d data x/y kind of plot, one can start from the xyplot.
@@ -152,7 +152,7 @@ Then you can use your psinus and plot what you need from it:
 # or
 >>> psinus(2.0, 0.0, 3, color="red").plot() # samething
 # or
->>> psinus(2.0, 0.0, 3, axes=(2,1,1)).go("fclear", "aset", "plot", "fill", "show", "draw")
+>>> psinus(2.0, 0.0, 3, axes=(2,1,1)).go("fclear", "axes", "plot", "fill", "show", "draw")
 
 ```
 The last form clear the figure, set the axes labels title, etc, plot the line, fill the plot, show the figure (figure.show) and redraw the graphic (figure.canvas.draw()). Everything is done on a (2,1,1) axes, meaning the first axes of a 2x1 grid.
@@ -164,15 +164,15 @@ A useful method is the '.info', it prints a state of the object with all the val
 >>> psinus().plot.info
 ```
 
-The go method is just a short cut : psinus(4.0).go("aset", "plot") is equivalent to do : p = psinus(4.0); p.aset(); p.plot()
+The go method is just a short cut : psinus(4.0).go("axes", "plot") is equivalent to do : p = psinus(4.0); p.axes(); p.plot()
 One can define a list of actions inside the object for the go method, the list of actions are parameters starting with '-':
 ```python
 # "-" is the default action when go is called without argument
 psinus["-"] = ["plot"]
-psinus["-all"] = ["fclear", "aset", "plot", "show", "draw"]
+psinus["-all"] = ["fclear", "axes", "plot", "show", "draw"]
 
 psinus().go() #  is go("plot")
-psinus().go("-all") # is go("fclear", "aset", "plot", "show", "draw")
+psinus().go("-all") # is go("fclear", "axes", "plot", "show", "draw")
 ```
 
 Of course the psinus example above does not make any sense if you have to plot your sinus only ones, but it does when you plot it often and, you want the default render to be defined separatly. Moreover you can decide to do what ever you want with your psinus, plot, fill, set axes , etc.. without having to add extra keyword as you would have done with a normal function.
@@ -196,7 +196,7 @@ xy = xyplot(x,y, yerr=yerr, xlabel="t [s]")
 xy.errorbar(linestyle="None", label="data")
 # fit a polynome and plot it (label=True -> replace label by fit result text)
 xy.polyfit(dim=2, color="red", linestyle="--", label=True).plot()
-xy.go("aset", "legend", "show", "draw")
+xy.go("axes", "legend", "show", "draw")
 ```
 ![image](../screenshots/screenshots/fitpoly.png)
 
@@ -271,7 +271,7 @@ x = np.linspace(0, 2, N)
 yerr = np.random.rand(N)*np.exp(x)*np.sign(np.random.rand(N)-0.5)
 y = 5+yerr
 xy = xyplot(x, y, fmt="k+", axes=211, figure="stat example")
-xy.go("fclear", "aset", "plot")
+xy.go("fclear", "axes", "plot")
 
 for stat in xy.ydata.stat.iter(fstat=["+std","mean","-std"], linestyle=list(":-:")):
     stat().axhline(color="red")

@@ -1,4 +1,6 @@
 from __future__ import division, absolute_import, print_function
+from .axis import Axes, axes
+from .figure import Figure, figure, fa
 
 from . import plotfuncs as pfs
 
@@ -6,11 +8,17 @@ import matplotlib.pyplot as plt
 
 from .base import PlotFactory, PlotFunc
 from .recursive import cycle, lcycle, KWS
+from . import styler
 
-
-class null:
-    """ a null value because sometime None is embigous """
-    pass
+def _make_(idt=" "*4):
+    blacklist = ["figure", "axes", "_axis", "_axes", "tables", "line2d", "spine"]    
+    keys =  pfs.__dict__.keys()
+    keys.sort()   
+    for k in keys:
+        f = pfs.__dict__[k]
+        if k in blacklist: continue
+        if isinstance(f, (PlotFunc, PlotFactory)):
+            print(idt+"%s = pfs.%s"%(k,k))    
 
 class BasePlot(PlotFactory):
     def get_axes(self):
@@ -18,18 +26,7 @@ class BasePlot(PlotFactory):
 
     def get_figure(self):
         return pfs.get_figure(self.get("figure",None), self.get("axes",None))
-
-    axes = pfs.aset
-    figure = pfs.fset
-
-    @property
-    def axes(self):
-        return self.get_axes()
-
-    @property
-    def figure(self):
-        return self.get_figure()
-
+        
     def derive(self, *args, **kwargs):
         new = super(BasePlot, self).derive(*args, **kwargs)
         new.reset() # reset all cycles to 0
@@ -37,16 +34,87 @@ class BasePlot(PlotFactory):
 
     def clearparams(self):
         return self.locals.clear()
+    ### _make_ build the following 
+
+    adjust = pfs.adjust
+    annotate = pfs.annotate
+    annotates = pfs.annotates
+    annotations = pfs.annotations
+    arrow = pfs.arrow
+    artist = pfs.artist
+    
+    axhline = pfs.axhline
+    axhspan = pfs.axhspan
+    
+    axline = pfs.axline
+    axspan = pfs.axspan
+    axvline = pfs.axvline
+    axvspan = pfs.axvspan
+    bar = pfs.bar
+    boxplot = pfs.boxplot
+    bxp = pfs.bxp
+    
+    clf = pfs.clf
+    collections = pfs.collections
+    colorbar = pfs.colorbar
+    contour = pfs.contour
+    contourf = pfs.contourf
+    contours = pfs.contours
+    draw = pfs.draw
+    errorbar = pfs.errorbar
+    eventplot = pfs.eventplot
+    fancyarrows = pfs.fancyarrows
+    fclear = pfs.fclear
+    fill = pfs.fill
+    fill_between = pfs.fill_between
+    fill_betweenx = pfs.fill_betweenx
+    fill_betweeny = pfs.fill_betweeny
+    fillstep = pfs.fillstep
+    fset = pfs.fset    
+    hexbin = pfs.hexbin
+    hist = pfs.hist
+    hist2d = pfs.hist2d
+    histx2x = pfs.histx2x
+    histx2y = pfs.histx2y
+    histy2x = pfs.histy2x
+    histy2y = pfs.histy2y
+    hlines = pfs.hlines
+    imshow = pfs.imshow
+    legend = pfs.legend
+    linecollections = pfs.linecollections
+    lines = pfs.lines
+    
+    matshow = pfs.matshow
+    patches = pfs.patches
+    pcolor = pfs.pcolor
+    pcolorfast = pfs.pcolorfast
+    pcolormesh = pfs.pcolormesh
+    pie = pfs.pie
+    plot = pfs.plot
+    plot_date = pfs.plot_date
+    plotfunc = pfs.plotfunc
+    polycollections = pfs.polycollections
+    polygon = pfs.polygon
+    quadmeshes = pfs.quadmeshes
+    rectangle = pfs.rectangle
+    savefig = pfs.savefig
+    scatter = pfs.scatter
+    semilogx = pfs.semilogx
+    semilogy = pfs.semilogy
+        
+    stackplot = pfs.stackplot
+    stem = pfs.stem
+    step = pfs.step
+    streamplot = pfs.streamplot
+    table = pfs.table
+    text = pfs.text
+    texts = pfs.texts
+    vlines = pfs.vlines
+
+        
 
 
-class AllPlot(BasePlot):
-    pass
-for k,p  in pfs.__dict__.iteritems():
-    if isinstance(p, PlotFunc):
-        setattr(AllPlot,k,p)
-
-
-class SubPlot(AllPlot):
+class SubPlot(Axes,BasePlot):
     """ PlotFactory. Return a new instance of this axes instance with updated parameters
 
     signatures:
@@ -74,11 +142,11 @@ class SubPlot(AllPlot):
     See examples bellow.
 
     Note that subplot(111, xlabel="x", ylabel="y") will not store the labels on the
-    axes (to keep the template capability), it will do it when the method .aset() is called.
+    axes (to keep the template capability), it will do it when the method .axes() is called.
         >>> myplot = subplot(111, xlabel="x", ylabel="y") # just store default labels
-        >>> myplot.aset() # write labels on the defined axis
+        >>> myplot.axes() # write labels on the defined axis
        can be also shorten in one:
-        >>> myplot = subplot(111, xlabel="x", ylabel="y", go=["aset"]) # see go bellow
+        >>> myplot = subplot(111, xlabel="x", ylabel="y", go=["axes"]) # see go bellow
 
 
     Args:
@@ -119,7 +187,7 @@ class SubPlot(AllPlot):
 
         anchor (bool) : if True, run the anchor method on the axes instance.
             anchor is not stored as parameters. Equivalent to do:
-                mysublpot.aset(axes=mysubplot.axes)
+                mysublpot.axes(axes=mysubplot.axes)
 
         go (string list) : actions to take after init, see .go method doc
 
@@ -156,15 +224,15 @@ class SubPlot(AllPlot):
 
          >>> a = subplot(111, xlabel="x", ylabel="y")
          >>> a.aclear() # clear the axes alias of cla()
-         >>> a.aset() # set the labels
+         >>> a.axes() # set the labels
          >>> a.plot([1,2,3,4],[1,2,3,4])
          The one-line version would be :
-         >>> subplot(111, xlabel="x", ylabel="y", x=[1,2,3,4], y=[1,2,3,4]).go("aclear","aset","plot")
+         >>> subplot(111, xlabel="x", ylabel="y", x=[1,2,3,4], y=[1,2,3,4]).go("aclear","axes","plot")
 
      You can define the go action so it will be executed automaticaly, if you
          do so you must use the derive() method instead of calling the object.
          >>> my_velocity_plot = subplot.derive( xlabel="time", ylabel="velocity",
-                                                       go=["aclear", "aset", "plot"]
+                                                       go=["aclear", "axes", "plot"]
                                                      )
          Than use my_velocity_plot where ever you want, of course x and y must
          be keywords.
@@ -196,12 +264,15 @@ class SubPlot(AllPlot):
 
       You can plot 4 axes in one single line:
         >>> import numpy as np
-        >>> _ = [a.go("aset","plot") for a in axes.iteraxes(2,2, y=np.random.rand(4,100),
+        >>> _ = [a.go("axes","plot") for a in axes.iteraxes(2,2, y=np.random.rand(4,100),
                                                     x=[np.arange(100)],
                                                     color=list("rb")
                                                  )]
 
     """
+
+    aclear = pfs.aclear
+    axes = axes
     def set(self, *args, **kwargs):
         posvar = ["xlabel","ylabel","title"]
         largs = len(args)
@@ -213,26 +284,12 @@ class SubPlot(AllPlot):
             else:
                 break
         self.update(dict(kwargs.pop(KWS,{}), **kwargs))
-        self.aset()
+        self.axes()
         return self
-
-    @pfs.aclear.decorate("axes", "figure", ("plotinstance",".."))
-    def aclear(axes=None, figure=None, plotinstance=None):
-        """ clear the axes
-
-        Parameters:
-            figure : figure id or object get the first axes if axes is None
-            axes   : axes object axes or number or tuple
-        """
-        # reset all the cycles of the axes plotinstance
-        if plotinstance:
-            plotinstance.reset()
-        return pfs.get_axes(axes, figure).clear()
-
-    clear = aclear
+        
 
     def anchor(self):
-        """ anchor the matplolib axes to this axes instance
+        """ anchor the matplolib axes to this subplot instance
 
         myaxes.anchor()
         is equivalent to:
@@ -242,11 +299,11 @@ class SubPlot(AllPlot):
             None
 
         Raises:
-            TypeError : if this is the original axes object
+            TypeError : if this is the original subplot object
 
         """
-        if self is axes:
-            raise TypeError("cannot anchor axes on the original axes object")
+        if self is subplot:
+            raise TypeError("cannot anchor axes on the original subplot object")
         self["axes"] = self.get_axes()
 
     @staticmethod
@@ -274,22 +331,24 @@ class SubPlot(AllPlot):
 #axes["color"] = cycle(u"bgrcmyk")
 subplot = SubPlot()
 
-subplot["-"] = ["aset"]
-subplot["-init"] = ["aclear", "aset"]
+subplot["-"] = ["axes"]
+subplot["-init"] = ["aclear", "axes"]
 subplot["-end"]  = ["legend", "draw"]
 
 pfs.plot_axes_classes += (SubPlot,)
 
 
 
-class Plots(AllPlot):
+class Plots(Figure,BasePlot):
     """
     plots would be the equivalent of figure. A colection of subplots, func, Plot object
     in the context of a figure.
     TODO : doc Plots
     """
-    set = pfs.fset
     clear = pfs.fclear
+    figure = figure
+    axes   = axes
+
     @staticmethod
     def finit(plot, *args, **kwargs):
         if len(args)>0:
@@ -300,10 +359,27 @@ class Plots(AllPlot):
             raise ValueError("plots take no more than 2 positional arguments")
         plot.update(dict(kwargs.pop(KWS,{}), **kwargs))
 
+    def anchor(self):
+        """ anchor the matplolib figure to this Plots instance
+
+        myaxes.anchor()
+        is equivalent to:
+        myfig["figure"] = myfig.get_figure()
+
+        Returns:
+            None
+
+        Raises:
+            TypeError : if this is the original figure object
+
+        """
+        if self is plots:
+            raise TypeError("cannot anchor figure on the original plots object")
+        self["figure"] = self.get_figure()    
+
 plots = Plots()
 
-
-
+styler.pfs.update(plots=Plots,subplot=subplot)
 
 
 

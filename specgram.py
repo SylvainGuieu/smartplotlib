@@ -110,7 +110,7 @@ specgram.finit.__doc__ = specgram.finit.__doc__ + plt.Axes.specgram.__doc__
 specgram.__doc__ = specgram.finit.__doc__
 
 
-_spectrum = dataplot.derive()
+_spectrum = xyplot.derive()
 
 @_spectrum.decorate(_example_=("spectrum",None))
 def magnitude_spectrum(plot,*args, **kwargs):
@@ -380,7 +380,7 @@ def psd(plot, *args, **kwargs):
     plot.locals.setdefault(dd+"label", 'Power Spectral Density (%s)' % psd_units)
 
 
-    plot.aset.update(grid=True)
+    plot.axes.update(grid=True)
     plot.goifgo()
 
 psd.finit.__doc__ = psd.finit.__doc__ + plt.Axes.psd.__doc__
@@ -451,7 +451,7 @@ def csd(plot, *args, **kwargs):
     plot.locals.setdefault(di+"label", 'Frequency')
     plot.locals.setdefault(dd+"label", 'Cross Spectrum Magnitude (dB)')
 
-    plot.aset.update(grid=True)
+    plot.axes.update(grid=True)
     plot.goifgo()
 
 csd.finit.__doc__ = csd.finit.__doc__ + plt.Axes.csd.__doc__
