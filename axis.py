@@ -329,7 +329,7 @@ class Axes(Axis):
         'figure', 'axes', "sharex", "sharey",     
         'picker', 'adjustable', 'cursor_props', 'yscale', 'navigate', 'clip_box',
         'transform', 'xscale', 'scale', 'aspect', 'axis_bgcolor','bgcolor', 'ylim', 'clip_on', 'xlim',
-        'axis_on', 'title', 'contains', 'clip_path', 'axis_off', 'xticks', 'ylabel',
+        'axis_on', 'title', 'title_offset','contains', 'clip_path', 'axis_off', 'xticks', 'ylabel',
         'autoscalex_on', 'xlabel', 'rasterization_zorder', 'axes_locator', 'subplotspec',
         'agg_filter', 'axisbelow', 'frame_on', 'navigate_mode', 'snap', 'autoscaley_on',
         'autoscale_on', 'ybound', 'yticklabels', 'rasterized', 'xmargin',

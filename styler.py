@@ -80,7 +80,7 @@ def new_style(style, _kw_={}, **kwargs):
             try:
                 values = dict(value)        
             except TypeError:
-                raise TypeError("End point object in '%s' is a dict like, value must be a dict like object"%(
+                raise TypeError("If end point object in '%s' is a dict like, value must be a dict like object"%(
                                 k
                                 ))
             else:

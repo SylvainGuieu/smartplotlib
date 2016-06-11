@@ -2598,8 +2598,9 @@ class RecFunc(object):
         """
 
 
-        new = self.__class__()
-
+        #new = self.__class__()
+        new = self._derive(None)
+        
         (new.nposargs, new.args,
          new.substitutions, new.anyparams) = merge_args(self, args)
 

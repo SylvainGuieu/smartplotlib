@@ -85,12 +85,14 @@ class _Style:
     @property
     def styleinfo(self):
         styles = self.get("__styles__", {})
+        prt = print
+        idt = " "*2
         if not styles: return 
         prt(idt+"Styles:")
         for style, params in styles.iteritems():
             prt(idt*2+style+":")
             for k,value in params.iteritems():
-                value = _value_formater(values)
+                value = _value_formater(value)
                 prt(idt*3+"|%s: %s"%(k,value))                   
 
     def _style2self(self):

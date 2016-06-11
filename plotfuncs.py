@@ -1216,11 +1216,14 @@ def label(text=None,  fontdict=None, labelpad=None,
     label.update(kwargs)
     return label
 
-@texts.decorate(("text","title"), "fontdict", "loc")
-def title(text=None,  fontdict=None, loc="center", **kwargs):
+@texts.decorate(("text","title"), "fontdict", "loc", "title_offset")
+def title(text=None,  fontdict=None, loc="center", title_offset=(0.0,0.0), **kwargs):
     if text is None:
         return None
-    return get_axes_kw(kwargs).set_title(text, fontdict, loc, **kwargs)
+    t =  get_axes_kw(kwargs).set_title(text, fontdict, loc, **kwargs)
+    pos = t.get_position()
+    t.set_position( (pos[0]+title_offset[0], pos[1]+title_offset[1]))
+    return t
 
 @label.decorate("xlabel", axis="x")
 def xlabel(*args,**kwargs):

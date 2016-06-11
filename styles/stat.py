@@ -8,7 +8,6 @@ light_gray = ".8"
 #  axes.facecolor -> axes.axi_bgcolor
 
 new_style("stat",
-
     figure = dict( facecolor="white"),
     text = dict( color = dark_gray),
     ticks = dict( labelcolor = dark_gray, direction="out", color=dark_gray),

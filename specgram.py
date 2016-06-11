@@ -348,14 +348,27 @@ def psd(plot, *args, **kwargs):
     (data,
      NFFT, Fs, Fc, detrend,
      window, noverlap, pad_to,
-     sides, scale_by_freq) = plot.parseargs(args, "data",
+     sides, scale_by_freq, space) = plot.parseargs(args, "data",
                     "NFFT", "Fs", "Fc", "detrend",
                     "window", "noverlap", "pad_to",
-                    "sides", "scale_by_freq",
+                    "sides", "scale_by_freq","space", 
                     NFFT=None, Fs=None, Fc=None, detrend=None,
                     window=None, noverlap=None, pad_to=None,
-                    sides=None, scale_by_freq=None)
+                    sides=None, scale_by_freq=None, space="db")
 
+    spaces = {"db": lambda y:10*np.log10(y), 
+              "log": lambda y:np.log10(y), 
+              "linear": lambda y:y, 
+            }
+
+    if space not in spaces:
+      raise ValueError("space must be one of '%s' gor '%s'"%("', '".join(spaces.keys()), space))
+
+    space_units  = {"db": "db",
+                    "log": "",
+                    "linear": ""
+                    }
+    
     if Fc is None:
         Fc = 0
 
@@ -365,17 +378,17 @@ def psd(plot, *args, **kwargs):
     pxx.shape = len(freqs),
     freqs += Fc
 
-    if scale_by_freq in (None, True):
-        psd_units = 'dB/Hz'
-    else:
-        psd_units = 'dB'
+    psd_units = space_units[space]
+    if scale_by_freq in (None, True):            
+        psd_units += '/Hz'
+
     di, dd = plot._get_direction()
 
-    plot.update( {di:alias('freqs'), dd:10 * np.log10(pxx),
-               dd+"min":0, dd+"max":alias(dd)},
-               min=0, max=alias(dd), lines=alias('freqs'),
-               psd=pxx, freqs=freqs, data=data,
-               Fc=Fc)
+    plot.update( {di:alias('freqs'), dd:spaces[space](pxx),
+                  dd+"min":0, dd+"max":alias(dd)},
+                  min=0, max=alias(dd), lines=alias('freqs'),
+                  psd=pxx, freqs=freqs, data=data,
+                  Fc=Fc)
     plot.locals.setdefault(di+"label", 'Frequency')
     plot.locals.setdefault(dd+"label", 'Power Spectral Density (%s)' % psd_units)
 
