@@ -351,8 +351,9 @@ def histogram2d(plot, *args, **kwargs):
 histogram["_example_"] = ("histogram", None)
 
 DataPlot.histogram = histogram
-ImgPlot.histogram = histogram.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten()))
-XYZPlot.histogram = histogram.derive(data=alias("z", lambda p,k: np.asarray(p[k]).flatten()))
+
+ImgPlot.histogram = histogram.derive(data=alias(lambda p: np.asarray(p["img"]).flatten()))
+XYZPlot.histogram = histogram.derive(data=alias(lambda p: np.asarray(p["z"]).flatten()))
 
 
 XYPlot.yhistogram2y = histogram.derive(data=alias("y"),

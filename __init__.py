@@ -75,8 +75,8 @@ Plots.xyplot = xyplot
 
 
 # indexes are None by default
-XYPlot.xdata = dataplot.derive(data=alias("x"), indexes=alias("y",lambda p,k:p.get(k,None)))
-XYPlot.ydata = dataplot.derive(data=alias("y"), indexes=alias("x",lambda p,k:p.get(k,None)))
+XYPlot.xdata = dataplot.derive(data=alias("x"), indexes=alias(lambda p:p.get("x",None)))
+XYPlot.ydata = dataplot.derive(data=alias("y"), indexes=alias(lambda p:p.get("y",None)))
 
 
 

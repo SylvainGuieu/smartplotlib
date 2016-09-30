@@ -63,11 +63,10 @@ def distribfit(plot, *args, **kwargs):
     #x = np.linspace(_min, _max, npoints)
     #y = distrib.pdf(x, loc, scale)*amplitude
 
-    x = alias(["min","max","npoints"],
-                  lambda p,a: np.linspace(p[a[0]],p[a[1]],p[a[2]]),
-                  "-> linspace(min, max, npoints)")
-    y = alias("x",
-              lambda p,x: distrib.pdf(p[x],loc, scale)*amplitude,
+    x = alias( lambda p: np.linspace(p["min"], p["max"], p["npoints"]),               
+               "-> linspace(min, max, npoints)")
+    y = alias(
+              lambda p: distrib.pdf(p["x"], loc, scale)*amplitude,
               "-> fit(x)"
               )
     #x = np.linspace(_min, _max, npoints)

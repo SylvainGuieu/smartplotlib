@@ -3,7 +3,7 @@ from recursive import alias
 import numpy as np
 KWS = "params"
 
-@dataplot.decorate(data=alias("img", lambda p,k: np.asarray(p[k]).flatten(), "-> img.flatten()"))
+@dataplot.decorate(data=alias(lambda p: np.asarray(p["img"]).flatten(), "-> img.flatten()"))
 def img2data(plot, *args, **kwargs):
     plot.update(kwargs.pop(KWS, {}), **kwargs)
     (img, x_idx, y_idx,

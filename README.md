@@ -11,110 +11,111 @@ It allows to well separate the plotting and the data painlessly.
 ### PlotFunc
 In smartplotlib all the plot function can have their default parameters.
 
-```python
-from smartplotlib import plot
-x = np.arange(100)
-y = x**2
-plot(x,y)
-```
+
+     from smartplotlib import plot
+     x = np.arange(100)
+     y = x**2
+     plot(x,y)
+
 
 So far nothing fancy, it works like matplotlib, but the function can accept default parameters and can be 'derived':
-```python
-from smartplotlib import plot
-## a plot_function object for stars and galaxies 
-plot_stars    = plot.derive( marker="+", linestyle="none", color="black") 
-plot_galaxies = plot.derive( marker="O", linestyle="none", color="red")
 
-## rgb and brow dwarfs are stars so they are derived from plot_stars
-plot_rgbs = plot_stars.derive(marker="*") #same color them stars 
-plot_bds  = plot_stars.derive(marker=".")
-```
+     from smartplotlib import plot
+     ## a plot_function object for stars and galaxies 
+     plot_stars    = plot.derive( marker="+", linestyle="none", color="black") 
+     plot_galaxies = plot.derive( marker="O", linestyle="none", color="red")
+     
+     ## rgb and brow dwarfs are stars so they are derived from plot_stars
+     plot_rgbs = plot_stars.derive(marker="*") #same color them stars 
+     plot_bds  = plot_stars.derive(marker=".")
+
 
 One can then use the created `plot_*` later in the code without taking care of how symbols, markers, etc are for each objects. 
-```
-plot_rgbs(ra, dec)
-plot_galaxies(ra, dec)
-```
+
+     plot_rgbs(ra, dec)
+     plot_galaxies(ra, dec)
+
 
 When a plotfunc is inherited the child got the default parameters of the parent.
 And parameters can be accessed and set by item assignation :
-```
->>> plot_bds['color']
- 'black'
->>> plot_stars['color'] = "blue"
->>> plot_bds['color']
- 'blue'
-```
+
+    >>> plot_bds['color']
+     'black'
+    >>> plot_stars['color'] = "blue"
+    >>> plot_bds['color']
+     'blue'
+
 
 Other example
 
-```python
-from smartplotlib import axvline, plot
-plot_valid_range = axvline.derive(x=[-10,100], color="red", linestyle="--")
 
-##
-# and later on embeded in your code 
-plot( *something* )
-plot_valid_range()
-```
+     from smartplotlib import axvline, plot
+     plot_valid_range = axvline.derive(x=[-10,100], color="red", linestyle="--")
+     
+     ##
+     # and later on embeded in your code 
+     plot( *something* )
+     plot_valid_range()
+
 
 creating a plofunc object is one line more difficult than creating a normal function. The object needs to know how many positional parameters and their names. The plotfunc object has a `.decorator` decorator method.
 Let us create a dummy plotfunc to understand how it works
 
-```python
-from smartplotlib import plotfunc
 
-@plotfunc.decorate(2,"ra","dec", "marker", "color")
-def sky(ra, dec, **kwargs):
-    ## do something with ra, dec
-    return (ra, dec, kwargs)
-```
+     from smartplotlib import plotfunc
+     
+     @plotfunc.decorate(2,"ra","dec", "marker", "color")
+     def sky(ra, dec, **kwargs):
+         ## do something with ra, dec
+         return (ra, dec, kwargs)
 
-```python
->>> sky( 4.545, 23.456)
-(4.545, 23.456, {})
->>> sky['color'] = "red"
->>> sky(4.545, 23.456)
-(4.545, 23.456, {'color': 'red'})
-```
+
+
+    >>> sky( 4.545, 23.456)
+    (4.545, 23.456, {})
+    >>> sky['color'] = "red"
+    >>> sky(4.545, 23.456)
+    (4.545, 23.456, {'color': 'red'})
+
 
 The `sky` object is a function where defaults can be set with parameter assignment. 
 We can create the sky function from a plot plotfunc, it will get all the line2d parameters.
 
-```python
-from smartplotlib import plot
 
-@plot.decorate(2,"ra","dec")
-def sky(ra, dec, *args, **kwargs):    
-    ## <--- CHECK ra and dec range raise errors ---> 
-    return plot(ra, dec, *args, **kwargs)
-```
+     from smartplotlib import plot
+     
+     @plot.decorate(2,"ra","dec")
+     def sky(ra, dec, *args, **kwargs):    
+         ## <--- CHECK ra and dec range raise errors ---> 
+         return plot(ra, dec, *args, **kwargs)
+
 
 ### Aliases
 Aliases are usefull to create parameter linked to other parameter.
 In our example one can alias 'x' to 'ra' and 'y' to 'dec'.
-```python
-from smartplotlib import plot, alias
 
-sky = plot.derive(x=alias('ra'), y=alias('dec'))
-####
-# later in your code 
-sky(ra=[4.5], dec=[24.5676])
+    from smartplotlib import plot, alias
+    
+    sky = plot.derive(x=alias('ra'), y=alias('dec'))
+    ####
+    # later in your code 
+    sky(ra=[4.5], dec=[24.5676])
 
 
-```
+Aliases can also be a function (second argument is a small description)
 
+     parabola = plot.derive(x=np.linspace(-10,10,50), y=alias(lambda p:p["x"]**2), "y->x**2")
 
 ### Plot Factories
 
 
 ## Purpose
-The matplotlib package is a huge and complete but in some case I often been frustrated with it. I often end up to write the same line of codes to plot a graphic slightly different than the one before, but with other data.
+The matplotlib package is huge and complete but in some case I often left frustrated with it. I often end up to write the same line of codes to plot a graphic slightly different than the one before, but with other data, color, marker ...
 
 I used to build function to plot my data with the matplotlib functions. Sufficient for what I wanted to do at that time. But after re-using it, I didn't want blue lines anymore but red cross, so I add the color=, marker= keywords. Then I realized that my function was setting the axes label or limits, I do not want that for an other case, I can add more and more keywords until I decide to add kw_axes=dict(), kw_errorbar=, kw_legend= etc ...
 At the end the function end up to be a huge confusing machinery.
 
-Also I often wanted to set plot parameters defaults for particular objects, not only for the full package as the matplolib.rcparams does. I often wanted to create an object to plot, for instance a model with its plot parameters, a data set with other parameters etc ... One can define dictionaries for each kind of data to plot and pass them to plots. But it is still confusing and not handy. One can create function for each data set , but it ends-up with the same problems and it is a lot of work to do.
+Also I often wanted to set plot parameters defaults for particular objects, not only for the full package as the `matplolib.rcparams` does. I often wanted to create an object to plot, for instance a model with its plot parameters, a data set with other parameters etc ... One can define dictionaries for each kind of data to plot and pass them to plots. But it is still confusing and not handy. One can create function for each data set , but it ends-up with the same problems and it is a lot of work to do.
 
 Smartplotlib provides tools to make easy plot templates and plots maker with a hierarchical parameter assignment.
 
@@ -122,7 +123,7 @@ The benchmark for me is that the package has to be logic and intuitive. Easy to 
 
 ## Engine
 
-smartplotlib provides to main kind of objects : plot factories (PlotFactory class) and plot function (PlotFunc class ). PlotCollection is a third one but is almost  the same thing than a PlotFactory let see that later.
+smartplotlib provides two main kind of objects : plot factories (PlotFactory class) and plot function (PlotFunc class ). PlotCollection is a third one but is almost  the same thing than a PlotFactory let see that later.
 
 - Plot factories contain plot functions and other plot factories object (or collection) and an engine to create themselves (like `__init__` is for classes).
 - Plot function are executing the plotting, they are functioning  exactly like their matplotlib counterparts (plot, bar, vlines, ...).
@@ -132,61 +133,60 @@ Both of these objects has item (=default parameters) setting like a dictionary d
 #### PlotFunc
 
 For plot function the parameters are used as function arguments substitution. Positional argument and keyword argument can be substituted. Let see with a dummy example:
-```python
-from smartplotlib import PlotFunc
-# create a new independent PlotFunc object
-# the first integer define the number of positional (=obligatory arguments)
-myplot = PlotFunc(2,"x","y","color","marker")
 
-# decorate the 'caller' function
-@myplot.caller
-def myplot(x,y,color="black", marker="+",  notsubstituedkwargs=None):
-    # do some stuff
-    return (x,y,color,marker)
-```
+     from smartplotlib import PlotFunc
+     # create a new independent PlotFunc object
+     # the first integer define the number of positional (=obligatory arguments)
+     myplot = PlotFunc(2,"x","y","color","marker")
+     
+     # decorate the 'caller' function
+     @myplot.caller
+     def myplot(x,y,color="black", marker="+",  notsubstituedkwargs=None):
+         # do some stuff
+         return (x,y,color,marker)
+
 Now one can use the myplot function like a normal function:
 
-```python
->>> myplot( [1,2,3,4], [1,4,6,8], color="red")
-([1,2,3], [1,2,3], "red", "+")
-```
+
+    >>> myplot( [1,2,3,4], [1,4,6,8], color="red")
+    ([1,2,3], [1,2,3], "red", "+")
+
 But also set the default :
-```python
->>> myplot["color"] = "red"
-# -or-
->>> myplot.update(x=[1,2,3], y=[1,2,3], color="red", marker="-")
->>> myplot()
-([1,2,3], [1,2,3], "red", "-")
-```
+
+    >>> myplot["color"] = "red"
+    # -or-
+    >>> myplot.update(x=[1,2,3], y=[1,2,3], color="red", marker="-")
+    >>> myplot()
+    ([1,2,3], [1,2,3], "red", "-")
+
 
 Or define 'derived' function :
-```python
-plotmodel = myplot.derive(color="red", marker="-")
-plotmeasure = myplot.derive(color="blue", marker="+")
-# -or- in one line
-plotmodel, plotmeasure = myplot.iter(color=["red", "blue"], marker=list("-+"))
-```
+
+    plotmodel = myplot.derive(color="red", marker="-")
+    plotmeasure = myplot.derive(color="blue", marker="+")
+    # -or- in one line
+    plotmodel, plotmeasure = myplot.iter(color=["red", "blue"], marker=list("-+"))
+
 Then you can re-use plotmodel and plotmeasure without having to care about the color and marker because they have been defined before.
 
 All or almost the plot functions of matplolib Axes has been rewritten in PlotFunc, so instead of the myplot example you can use the plot, vlines, hlines, bar, step, hist, ... etc ...
 At the beginning of a project one can define all the different type of plots:
-```python
-from smartplotlib import plot
-plot_stars = plot.derive( marker="+", linestyle="none", color="black")
 
-plot_giant = plot_stars.derive(marker="*")
-plot_dwarf = plot_stars.derive(marker=".")
+    from smartplotlib import plot
+    plot_stars = plot.derive( marker="+", linestyle="none", color="black")
+    
+    plot_giant = plot_stars.derive(marker="*")
+    plot_dwarf = plot_stars.derive(marker=".")    
 
-```
 The giant and dwarf are 'derived' from stars, the marker is redefine but the color is the default of stars e.i. "black" in this example.
 
-```python
->>> plot_dwarf["color"]
-"black"
->>> plot_stars["color"] = "blue"
->>> plot_dwarf["color"]
-"blue"
-```
+
+     >>> plot_dwarf["color"]
+     "black"
+     >>> plot_stars["color"] = "blue"
+     >>> plot_dwarf["color"]
+     "blue"
+
 
 The default parameters are hierarchic, if not defined locally they are taken from the parent from whom they have been derived. But their is more ! They can also be set in a parent PlotFactory or PlotCollection. Let us see that.
 
@@ -199,31 +199,31 @@ When called, a Plot CollectionFactory return always a new instance of itself.
 Let see an example with the xyplot collection, it is a collection  to plot, and do more advanced stuff, on two data vectors x and y.
 
 Following the example above for stars, you can use it as template:
-```python
-stars = xyplot.derive( marker="+", linestyle="none", color="black")
-giant = stars.derive(marker="*")
-dwarf  = stars.derive(marker=".")
 
->>> dwarf.plot(x,y) # -or- dwarf(x,y).plot()
-```
+    stars = xyplot.derive( marker="+", linestyle="none", color="black")
+    giant = stars.derive(marker="*")
+    dwarf  = stars.derive(marker=".")
+    
+    >>> dwarf.plot(x,y) # -or- dwarf(x,y).plot()
+
 
 One can also define the plot x,y data inside the template:
-```python
-from smartplotlib import xyplot
-import numpy as np
-x = np.arange(50)
-parabola = xyplot(x, x*x, color="red", xlabel="x", ylabel="x^2")
-```
+
+    from smartplotlib import xyplot
+    import numpy as np
+    x = np.arange(50)
+    parabola = xyplot(x, x*x, color="red", xlabel="x", ylabel="x^2")
+
 
 We have defined parabola which is a new instance of a xyplot with some parameters defined : 'x', 'y' (the second parameter), 'color', 'xlabel', 'ylabel'. All the children of parabola will inherit these parameter but that does not mean they will care about all of them. For instance 'plot' (which plot the data) will used the inherited 'x', 'y' and 'color'. 'axes' which set the axes labels, title, scale, grid , .... etc will only use, in our case, the parameters 'xlabel' and 'ylabel'.
 
-```python
->>> parabola.plot() # plot the data
->>> parabola.axes() # set the axes stuff
->>> parabola.show() # show the figure
-# -or- in one line:
->>> parabola.go("plot", "axes", "show")
-```
+
+     >>> parabola.plot() # plot the data
+     >>> parabola.axes() # set the axes stuff
+     >>> parabola.show() # show the figure
+     # -or- in one line:
+     >>> parabola.go("plot", "axes", "show")
+
 
 Let see an simple example on how to create a plotfactory easily. Imagine you have to plot often a sinus on your graphs, you can of course make a normal function and parse all the keywords to your function with all the different case of plotting, or, you can use a plot factory. As the sinus is a 2d data x/y kind of plot, one can start from the xyplot.
 Each PlotFactory, PlotCollection, PlotFunc has a attribute 'derive' to create a derived instance, and an attribute 'decorate' to decorate the engine function (the engine function is called finit in case of PlotFactory and fcall in case of PlotFunc).
@@ -232,23 +232,23 @@ A plot factory function maker receive always a fresh new plot
 instance and must return None (as \_\_init\_\_ for classes)
 below we decorate from xyplot and add a lienestyle default parameter on the fly:
 
-```python
-from smartplotlib import xyplot
-import numpy as np
 
-@xyplot.decorate(linestyle="--")
-def psinus(plot, freq=1.0, phase=0.0, nperiod=1, npoints=50, **kwargs):
-    """ Sinus plot factory """
+    from smartplotlib import xyplot
+    import numpy as np
 
-    plot.update(**kwargs) # save all kwargs for future plot
+    @xyplot.decorate(linestyle="--")
+    def psinus(plot, freq=1.0, phase=0.0, nperiod=1, npoints=50, **kwargs):
+        """ Sinus plot factory """
 
-    x = np.linspace(0, 2*np.pi*nperiod, int(npoints*nperiod))
-    plot.update(x=x, y=np.sin(x*freq+phase), ylabel="sin(x)", xlabel="x")
+        plot.update(**kwargs) # save all kwargs for future plot
+
+        x = np.linspace(0, 2*np.pi*nperiod, int(npoints*nperiod))
+        plot.update(x=x, y=np.sin(x*freq+phase), ylabel="sin(x)", xlabel="x")
 
 
-# put some default, for instance,  here in the fill method
-psinus.fill.update(linewidth=None, linestyle="solid")
-```
+    # put some default, for instance,  here in the fill method
+    psinus.fill.update(linewidth=None, linestyle="solid")
+
 Then you can use your psinus and plot what you need from it:
 ```python
 >>> psinus(2.0, 0.0, 3).plot(color="red") # a line plot

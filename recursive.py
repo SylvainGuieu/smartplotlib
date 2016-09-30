@@ -3162,21 +3162,25 @@ class loop(_loopbase_):
         return  next(self.iterator)
 
 class alias(object):
-    def __init__(self, param, func=None, smalldoc=None):
-        self.param = param
-        self.func  = func
+    def __init__(self, param_or_func, smalldoc=None):
+        
+        if isinstance(param_or_func, basestring):
+            param = param_or_func
+            if smalldoc is None:
+                smalldoc = "alias('%s')"%param
+            self.func = lambda p:p[param]
+        else: 
+            if not hasattr(param_or_func, "__call__"):
+                raise ValueError("first argument must be string or callable")
+
+            self.func  = param_or_func                            
         self.smalldoc = smalldoc
+
     def get(self, obj):
-        if self.func:
-            return self.func(obj,self.param)
-        return obj[self.param]
+        return self.func(obj)      
 
     def __str__(self):
-        if self.func:
-            if self.smalldoc:
-                return "alias('%s', %s)"%(self.param, self.smalldoc)
-            return "alias('%s', %s)"%(self.param, self.func)
-        return "alias('%s')"%self.param
+        return "<alias>" if self.smalldoc is None else self.smalldoc
 
     def __repr__(self):
         return self.__str__()

@@ -332,14 +332,14 @@ class XYPlot(PlotFactory, _BaseFigAxes):
     axvline = pfs.axvline.derive(ymin=0, ymax=1.0)
     axhline = pfs.axhline.derive(xmin=0, xmax=1.0)
 
-    bar2y  = pfs.bar.derive(edge=alias("x", _k2edge, "-> x[:-1]"),
-                            width=alias("x", _k2width, "-> diff(x)"),
-                            height=alias("y", _k2edge, "-> y[:-1]"),
+    bar2y  = pfs.bar.derive(edge= alias(lambda p:_k2edge(p,"x"),  "-> x[:-1]"),
+                            width=alias(lambda p:_k2width(p,"x"), "-> diff(x)"),
+                            height=alias(lambda p:_k2edge(p,"y"), "-> y[:-1]"),
                             align="center"
                           )
-    bar2x  = pfs.bar.derive(edge=alias("y", _k2edge, "-> y[:-1]"),
-                            width=alias("y", _k2width, "-> diff(y)"),
-                            height=alias("x", _k2edge, "-> x[:-1]"),
+    bar2x  = pfs.bar.derive(edge=alias(lambda p:_k2edge(p,"y"),   "-> y[:-1]"),
+                            width=alias(lambda p:_k2width(p,"y"), "-> diff(y)"),
+                            height=alias(lambda p:_k2edge(p,"x"), "-> x[:-1]"),
                             align="center", direction="x"
                           )
     bar = bar2y
@@ -363,10 +363,10 @@ class XYPlot(PlotFactory, _BaseFigAxes):
         if y is None: # with one arg, x is y
             if x is not None:
                 y, x = x, None
-        
-        if x is None:
-            x = alias("x", lambda p,k :np.arange(np.asarray(p["y"]).shape[0]), "-> arange(len(y))")
-        plot.update(x=x, y=y)
+        plot.update(y=y)
+        #if x is None:
+        #    x = alias(lambda p:np.arange(np.asarray(p["y"]).shape[0]), "-> arange(len(y))")
+        plot.update(x=x)
 
 
 
@@ -561,7 +561,7 @@ class ImgPlot(PlotFactory, _BaseFigAxes):
 
 
     imshow = pfs.imshow
-    hist = pfs.hist.derive(data=alias("img", lambda p,k: np.asarray(p[k]).flatten(), "-> img.flatten()"))
+    hist = pfs.hist.derive(data=alias(lambda p: np.asarray(p["img"]).flatten(), "-> img.flatten()"))
     colorbar = pfs.colorbar
 
     sub = _subimg()
@@ -581,15 +581,15 @@ class ScalarPlot(PlotFactory, _BaseFigAxes):
     axvline = pfs.axvline.derive(x=alias("value"),ymin=0,ymax=1)
     axhline = pfs.axhline.derive(y=alias("value"),xmin=0,xmax=1)
 
-    vlines = pfs.vlines.derive(x=alias("value", lambda p,k:np.asarray(p[k]), "-> array(value)"))
-    hlines = pfs.vlines.derive(y=alias("value", lambda p,k:np.asarray(p[k]), "-> array(value)"))
-    lines  = pfs.vlines.derive(data=alias("value", lambda p,k:np.asarray(p[k]), "-> array(value)"))
+    vlines = pfs.vlines.derive(x=alias(lambda p:np.asarray(p["value"]), "-> array(value)"))
+    hlines = pfs.vlines.derive(y=alias(lambda p:np.asarray(p["value"]), "-> array(value)"))
+    lines  = pfs.vlines.derive(data=alias(lambda p:np.asarray(p["value"]), "-> array(value)"))
 
     axspan  = pfs.axspan.derive(value1=alias("previous"), value2=alias("value"))
     axvspan = pfs.axvspan.derive(xmin=alias("previous"),   xmax=alias("value"))
     axhspan = pfs.axvspan.derive(ymin=alias("previous"),   ymax=alias("value"))
 
-    text  = pfs.text.derive(text=alias("value", lambda p,k: str(p[k]), "-> str(value)"))
+    text  = pfs.text.derive(text=alias(lambda p: str(p["value"]), "-> str(value)"))
 
 
     annotate = pfs.annotate

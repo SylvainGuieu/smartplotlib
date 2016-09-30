@@ -168,17 +168,18 @@ class PolyFit(XYPlot):
         plot["xmax"] = xmax
         plot["npoints"] = npoints
 
-        x = alias(["xmin","xmax","npoints"],
-                  lambda p,a: np.linspace(p[a[0]],p[a[1]],p[a[2]]),
-                  "-> linspace(xmin, xmax, npoints)")
+        x = alias(
+                  lambda p: np.linspace(p["xmin"],p["xmax"],p["npoints"]),
+                  "-> linspace(xmin, xmax, npoints)"
+                  )
         plot["x"] = x
 
         if fout:
-            y = alias("x", lambda p,k: fout(p, p[k], p['coeff']),
+            y = alias(lambda p: fout(p, p["x"], p['coeff']),
                    "-> y_fit(x)")
         else:    
-            y = alias("x", lambda p,k: get_model(p[k], p['coeff']),
-                       "-> y_fit(x)")
+            y = alias(lambda p: get_model(p["x"], p['coeff']),
+                      "-> y_fit(x)")
         
         plot["y"] = y
         plot["ymin"] = 0
